@@ -1,7 +1,11 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
-const headerLinks = [
-  { to: '/join', label: 'Join Free', primary: true },
+type HeaderLink =
+  | { href: string; label: string; primary: true }
+  | { to: string; label: string; primary?: false };
+
+const headerLinks: HeaderLink[] = [
+  { href: '/dashboard.html', label: 'Get Started', primary: true },
   { to: '/why', label: 'Why Credit Vivo' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/faq', label: 'FAQ' },
@@ -22,17 +26,27 @@ function Nav() {
 
           <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:w-auto lg:justify-end lg:overflow-visible lg:pb-0" aria-label="Main navigation">
             {headerLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={
+              'href' in link ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="shrink-0 rounded-lg bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-900/20"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={
                   link.primary
                     ? 'shrink-0 rounded-lg bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-900/20'
                     : 'shrink-0 rounded-lg px-3 py-2.5 text-sm font-semibold text-navy-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800'
-                }
-              >
-                {link.label}
-              </Link>
+                  }
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </nav>
         </div>
@@ -111,7 +125,7 @@ function Footer() {
           <div>
             <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Members</h4>
             <div className="space-y-2">
-              <Link to="/dashboard" className="block text-xs text-navy-400 hover:text-white transition-colors">Sign In</Link>
+              <a href="/dashboard.html" className="block text-xs text-navy-400 hover:text-white transition-colors">Sign In</a>
               <Link to="/scan" className="block text-xs text-navy-400 hover:text-white transition-colors">Free Scan</Link>
               <Link to="/findings" className="block text-xs text-navy-400 hover:text-white transition-colors">Findings</Link>
             </div>

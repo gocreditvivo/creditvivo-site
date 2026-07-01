@@ -101,10 +101,10 @@ export default function Home() {
               </p>
 
               <div className="mb-8 flex flex-wrap gap-3">
-                <Link to="/join" className="btn-primary text-sm py-3 px-6">
+                <a href="/dashboard.html" className="btn-primary text-sm py-3 px-6">
                   Start Free Credit Check-In
                   <ArrowRight size={15} />
-                </Link>
+                </a>
                 <Link to="/why" className="btn-outline text-sm py-3 px-6">
                   Why Credit Vivo
                 </Link>
@@ -296,10 +296,10 @@ export default function Home() {
           <p className="text-sm text-navy-300 mb-6">
             See possible report errors first. Upgrade later if you want guided next steps or attorney-ready support.
           </p>
-          <Link to="/join" className="btn-mint text-sm py-3 px-7">
+          <a href="/dashboard.html" className="btn-mint text-sm py-3 px-7">
             Join Free
             <ArrowRight size={15} />
-          </Link>
+          </a>
         </div>
       </section>
     </>
