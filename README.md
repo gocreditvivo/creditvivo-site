@@ -1,83 +1,53 @@
+# Credit Vivo Site
 
+Current revision: `2026-07-01-r16.1.1-repo-cleanup`
 
-# Credit Vivo Bolt Build — Reviewed Version
+Credit Vivo is a Vite + React frontend with a Python scanner API adapter. GitHub is the source of truth and Vercel builds the public site from `main`.
 
-## What was fixed
-- Removed an unused TypeScript import so `npm run typecheck` passes.
-- Added `public/_redirects` for static SPA hosting.
-- Added `vercel.json` rewrite support for Vercel deployment.
+## Active App Structure
 
-## Run locally
+- `index.html` - Vite app shell.
+- `dashboard.html` - static secure portal preview.
+- `src/` - active React/Vite frontend.
+- `api/` - Vercel API entrypoint.
+- `scanner_backend/` - scanner API and parser modules.
+- `public/` - public assets, robots, sitemap, redirects.
+- `supabase/` - database migration files.
+- `vercel.json` - Vercel build/output/routing config.
+- `render.yaml` - Render scanner backend config.
+
+## Removed From Active Source
+
+The old Next/Bolt/demo surfaces were removed from the active GitHub tree because this project builds as Vite and those folders were not used by Vercel:
+
+- `.agents/`
+- `.bolt/`
+- `app/`
+- `components/`
+- `demo/`
+- `src/app/`
+- `next.config.mjs`
+- `next-env.d.ts`
+
+## Run Locally
+
 ```bash
 npm install
 npm run dev
 ```
 
-## Verify before deploy
+## Verify Before Deploy
+
 ```bash
 npm run typecheck
+npm run lint
 npm run build
 ```
 
-## Notes
-This is still a demo/public website. Real authentication, payments, report uploads, and credit-processing backend are not connected yet.
+## Deployment
 
-## v15.1 Content Audit + Layout Lock
+Push verified changes to GitHub `main`. Vercel should automatically deploy the frontend from GitHub. Render should deploy the scanner API when backend files change.
 
-This package adds:
-- `CONTENT_AUDIT_V15_1.md`
-- `FEATURE_LAYOUT_LOCK_RULES.md`
-- `NEXT_FEATURE_PROMPT_LAYOUT_SAFE.md`
-- Restored content source docs from the v14.3 handoff package
+## Safety
 
-No public layout files were changed in v15.1.
-
-
-## v15.2 Parser/Scanner Integration Handoff
-
-This build includes a layout-safe parser/scanner integration package.
-
-Added:
-- `scanner_backend/` FastAPI backend adapter
-- `src/lib/scannerApi.ts` frontend API helper
-- `SCANNER_INTEGRATION_PROMPT_FOR_BOLT.md`
-- `SCANNER_API_CONTRACT.md`
-- `PARSER_SCANNER_UPDATE_NOTES_V12_9.md`
-- `ENV_FRONTEND_EXAMPLE.env`
-
-Public page layout was not changed.
-
-
-## v15.3 Note
-This version removes Anthropic/Claude and PyMuPDF dependencies. It uses Credit Vivo Native Parser with no paid AI API.
-
-
-## v16 Proprietary Parser Engine Upgrade
-
-This version adds the stronger Credit Vivo Proprietary Parser Engine.
-
-Added:
-- `scanner_backend/credit_vivo_proprietary_engine.py`
-- normalized tradeline schema
-- issue detection engine
-- cross-bureau matching
-- confidence scoring
-- evidence snippets
-- JSON/CSV outputs
-- parser tests
-- competitive moat plan
-- v16→v20 roadmap
-
-Public website layout was not changed.
-
-
-## v16.1 Integration Fix
-
-Bolt was missing the actual UI wiring between the member pages and the parser backend.
-
-Fixed:
-- `/scan` now accepts PDF upload and calls scanner backend.
-- `/findings` now reads the last scan result.
-- `/dashboard` now reflects scan result counts.
-- `/admin-review` added for internal review preview.
-- Public layout remains locked.
+Do not commit customer credit reports, SSNs, IDs, `.env` files, API keys, bureau credentials, payment keys, Vercel tokens, GitHub tokens, or real customer documents.

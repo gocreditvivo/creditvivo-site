@@ -17,11 +17,11 @@ Plain English: GitHub is the source of truth. Vercel and Render should update fr
 
 Current working app:
 
-`C:\Users\miste\Documents\Codex\2026-06-28\ca\work\creditvivo-site-live`
+`C:\Users\miste\OneDrive\Desktop\credit-vivo-review-package-20260629-211207\creditvivo-site`
 
 Local preview:
 
-`http://127.0.0.1:3000`
+`http://127.0.0.1:4180`
 
 ## GitHub
 
@@ -66,8 +66,10 @@ If Render auto-deploy is enabled, pushing to GitHub updates the scanner API. If 
 
 - `npm run build` passes.
 - `npm run typecheck` passes.
+- `npm run lint` passes.
 - `python -m pytest tests` passes inside `scanner_backend` when backend files change.
 - `/`, `/scan`, `/privacy`, `/terms`, `/disclosure`, `/pricing`, `/faq`, and `/signup` load.
+- `/dashboard.html` or `/dashboard` loads the static dashboard preview.
 - Security headers are present.
 - Demo scan still creates a case.
 - Live domain opens after Vercel deploys.
