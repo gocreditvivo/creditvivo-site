@@ -451,7 +451,7 @@ Status: Open
 Date Opened: 03/09/2026
 Date Reported: 06/11/2026
 """
-        parsed = parse_reports({"healthcheck.pdf": {"text": smoke_sample, "bureau": "Equifax"}})
+        parsed = parse_reports({"healthcheck.pdf": {"text": smoke_sample}})
         data = result_to_dict(parsed)
         by_account = {item.get("account_number_masked"): item for item in data.get("tradelines", [])}
         smoke_ok = (

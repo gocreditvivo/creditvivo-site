@@ -81,6 +81,18 @@ Date Opened: 03/09/2026
 Date Reported: 06/11/2026
 """
 
+POSSIBLE_SKIPPED_TRADELINE_SAMPLE = """
+--- PAGE 1 ---
+Equifax Credit Report
+
+Account Number: *9999
+Account Type: Credit Card
+Balance: $44
+Status: Open
+Date Opened: 01/01/2024
+Date Reported: 06/01/2026
+"""
+
 BOILERPLATE_SAMPLE = """
 --- PAGE 1 ---
 Experian Credit Report
@@ -386,6 +398,7 @@ def test_parse_sample_report(tmp_path):
         "Raw Tradelines With Dates",
         "Dates Found Audit",
         "Date Issues To Dispute",
+        "Parser QA Warnings",
         "Metro 2 + FCRA Review",
         "Metro 2 Requirements",
         "Metro 2 Guide Notes",
@@ -516,6 +529,10 @@ def test_parse_sample_report(tmp_path):
     assert "Pre-Scan Health Check Result" in security_audit_text
     assert "Safe Mode Enabled" in security_audit_text
     assert "Scan Allowed" in security_audit_text
+    parser_qa = workbook["Parser QA Warnings"]
+    parser_qa_headers = [parser_qa.cell(row=1, column=column).value for column in range(1, parser_qa.max_column + 1)]
+    assert "Warning Type" in parser_qa_headers
+    assert "Admin Action" in parser_qa_headers
     desktop_dashboard = workbook["Desktop Dashboard"]
     dashboard_text = " ".join(
         str(desktop_dashboard.cell(row=row, column=column).value or "")
@@ -808,6 +825,36 @@ def test_page_level_bureau_detection_positive_accounts_no_disputes(tmp_path):
     assert workbook["Draft Letters"].max_row == 1
     assert "Raw Evidence Index" in workbook.sheetnames
     assert "QA Verification" in workbook.sheetnames
+
+
+def test_possible_skipped_tradeline_goes_to_admin_qa_not_disputes(tmp_path):
+    result = parse_reports({
+        "possible_skipped.pdf": {"text": POSSIBLE_SKIPPED_TRADELINE_SAMPLE, "bureau": "Equifax"},
+    })
+    data = result_to_dict(result)
+
+    assert data["tradelines"] == []
+    assert data["issues"] == []
+    assert data["recommended_letter_queue"] == []
+    assert len(data["parser_qa_warnings"]) == 1
+    warning = data["parser_qa_warnings"][0]
+    assert warning["warning_type"] == "possible_skipped_tradeline"
+    assert warning["customer_visible"] is False
+    assert warning["creates_dispute_issue"] is False
+    assert warning["account_number_guess"] == "*9999"
+    assert "Admin QA should review" in warning["admin_action"]
+
+    write_outputs(result, tmp_path)
+    workbook = load_workbook(tmp_path / "credit_vivo_desktop_scanner_output.xlsx", read_only=True)
+    parser_qa = workbook["Parser QA Warnings"]
+    parser_qa_text = " ".join(
+        str(parser_qa.cell(row=row, column=column).value or "")
+        for row in range(1, parser_qa.max_row + 1)
+        for column in range(1, parser_qa.max_column + 1)
+    )
+    assert "possible_skipped_tradeline" in parser_qa_text
+    assert "*9999" in parser_qa_text
+    assert workbook["Draft Letters"].max_row == 1
 
 
 def test_three_bureau_comparison_includes_ungrouped_accounts():

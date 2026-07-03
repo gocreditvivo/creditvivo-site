@@ -247,6 +247,7 @@ class ParseResult:
     cross_bureau_groups: List[dict]
     customer_summary: dict
     admin_summary: dict
+    parser_qa_warnings: List[dict] = field(default_factory=list)
 
 
 # -----------------------------
@@ -1268,6 +1269,72 @@ def dedupe_tradelines(items: List[NormalizedTradeline]) -> List[NormalizedTradel
     return out
 
 
+def _block_account_signature(block: str) -> str:
+    acct = extract_field("account_number_masked", block)
+    if acct:
+        return f"acct:{acct}"
+    name = guess_account_name(block)
+    opened = extract_field("date_opened", block)
+    balance = extract_field("balance", block)
+    return "block:" + stable_id(compact_key(name), opened, balance)
+
+
+def block_looks_like_account_candidate(block: str) -> bool:
+    lower = block.lower()
+    if is_boilerplate_block(block) or has_non_account_section_bias(block):
+        return False
+    field_hits = sum(1 for term in ACCOUNT_SECTION_TERMS if term in lower)
+    has_account_number = bool(re.search(r"\b(?:account number|account #|acct\s*(?:#|number))\b", lower, flags=re.I))
+    has_account_type = "account type" in lower or "loan/account type" in lower or "loan type" in lower
+    has_status = "status" in lower or "pay status" in lower or "payment status" in lower
+    has_date = "date opened" in lower or "date reported" in lower or "date updated" in lower
+    has_balance = "balance" in lower or bool(re.search(MONEY, block))
+    has_creditor_like_line = any(
+        re.fullmatch(r"[A-Z0-9][A-Z0-9 &.,'()/\-]{3,80}", clean_text(line))
+        and not is_bad_account_name(clean_text(line))
+        for line in block.splitlines()[:12]
+    )
+    return (
+        field_hits >= 3
+        or (has_account_number and has_account_type)
+        or (has_account_number and has_status and (has_date or has_balance))
+        or (has_creditor_like_line and has_account_number and (has_date or has_balance or has_status))
+    )
+
+
+def detect_possible_skipped_tradelines(filename: str, bureau: str, text: str, file_hash: str, parsed_items: List[NormalizedTradeline]) -> List[dict]:
+    parsed_signatures = {_block_account_signature(item.raw_block) for item in parsed_items if item.source_filename == filename}
+    warnings = []
+    for page_num, page_text in page_split(text):
+        detection = detect_bureau_with_conflict("", page_text, bureau)
+        active_bureau = detection.bureau if detection.bureau != "Unknown Bureau" else bureau
+        page_input = f"--- PAGE {page_num} ---\n{page_text}" if page_num is not None else page_text
+        for block_page, block in candidate_blocks(page_input):
+            if not block_looks_like_account_candidate(block):
+                continue
+            signature = _block_account_signature(block)
+            if signature in parsed_signatures:
+                continue
+            account_name = guess_account_name(block)
+            warnings.append({
+                "warning_id": stable_id("possible_skipped_tradeline", filename, active_bureau, str(block_page or ""), signature),
+                "warning_type": "possible_skipped_tradeline",
+                "severity": "high",
+                "source_filename": filename,
+                "source_file_hash": file_hash,
+                "bureau": active_bureau,
+                "page": block_page,
+                "account_name_guess": account_name,
+                "account_number_guess": extract_field("account_number_masked", block),
+                "raw_block_hash": hashlib.sha256(block.encode("utf-8", errors="ignore")).hexdigest(),
+                "raw_text_snippet": clean_text(block)[:900],
+                "admin_action": "Admin QA should review this account-like block. Do not create disputes or letters from this warning unless a tradeline is confirmed.",
+                "customer_visible": False,
+                "creates_dispute_issue": False,
+            })
+    return warnings
+
+
 # -----------------------------
 # Cross-bureau matching
 # -----------------------------
@@ -1628,6 +1695,7 @@ def parse_reports(report_texts: Dict[str, dict]) -> ParseResult:
     """
     files = []
     all_tradelines: List[NormalizedTradeline] = []
+    parser_qa_warnings: List[dict] = []
 
     for filename, payload in report_texts.items():
         text = clean_text(payload.get("text", ""))
@@ -1651,7 +1719,9 @@ def parse_reports(report_texts: Dict[str, dict]) -> ParseResult:
             "status": "parsed" if text else "empty_text",
         })
 
-        all_tradelines.extend(parse_tradelines_for_bureau(bureau, filename, text, file_hash, upload_bureau))
+        file_tradelines = parse_tradelines_for_bureau(bureau, filename, text, file_hash, upload_bureau)
+        all_tradelines.extend(file_tradelines)
+        parser_qa_warnings.extend(detect_possible_skipped_tradelines(filename, bureau, text, file_hash, file_tradelines))
 
     groups = group_cross_bureau(all_tradelines)
     issues = detect_issues(all_tradelines, groups)
@@ -1685,6 +1755,7 @@ def parse_reports(report_texts: Dict[str, dict]) -> ParseResult:
         cross_bureau_groups=groups,
         customer_summary=customer_summary,
         admin_summary=admin_summary,
+        parser_qa_warnings=parser_qa_warnings,
     )
 
 
@@ -3332,6 +3403,7 @@ def result_to_dict(result: ParseResult) -> dict:
         "files": result.files,
         "tradelines": tradelines,
         "issues": issues,
+        "parser_qa_warnings": result.parser_qa_warnings,
         "cross_bureau_groups": result.cross_bureau_groups,
         "customer_summary": result.customer_summary,
         "admin_summary": result.admin_summary,
@@ -4178,6 +4250,10 @@ def build_qa_verification_rows(data: dict) -> List[List[object]]:
         for file_row in data.get("files", [])
         for warning in file_row.get("parser_warnings", [])
     ]
+    skipped_warnings = [
+        warning for warning in data.get("parser_qa_warnings", [])
+        if warning.get("warning_type") == "possible_skipped_tradeline"
+    ]
     checks = [
         ("QA-001", "Bureau detection pass/fail", all((item.get("bureau") or "").strip() for item in tradelines), "High", "Every parsed account has a bureau.", "Fix page/header bureau detection."),
         ("QA-002", "Raw evidence present", all_have_raw, "High", "Every account has source hash, raw block ID/hash, and raw text.", "Attach raw evidence before approval."),
@@ -4186,7 +4262,7 @@ def build_qa_verification_rows(data: dict) -> List[List[object]]:
         ("QA-005", "Issue gating result", issue_gating_ok, "High", f"issues={len(issues)} letters={len(letters)}", "Do not queue letters when no issue exists."),
         ("QA-006", "Duplicate header result", not duplicate_headers, "Medium", "3 Bureau Comparison headers are unique.", "Remove duplicate headers."),
         ("QA-007", "Workbook schema result", True, "Medium", "Workbook schema checked during export validation.", "Run validate_workbook_output."),
-        ("QA-008", "Missing tradeline warning result", True, "Low", "Sprint 1 placeholder. Skipped tradeline detector is Sprint 2.", "Add skipped tradeline detector in Sprint 2."),
+        ("QA-008", "Missing tradeline warning result", not skipped_warnings, "High", f"{len(skipped_warnings)} possible skipped tradeline warning(s)." if skipped_warnings else "No possible skipped tradeline warnings.", "Admin QA must review account-like blocks before production approval."),
         ("QA-009", "Parser warnings", not parser_warnings, "Medium", "; ".join(parser_warnings[:10]) or "No parser warnings.", "Admin review warnings before production."),
     ]
     production_approved = all(result for _id, _name, result, severity, _evidence, _fix in checks if severity in {"High", "Medium"})
@@ -4216,6 +4292,7 @@ def validate_workbook_output(path: Path) -> dict:
         "Raw Evidence Index",
         "QA Verification",
         "Security Audit Summary",
+        "Parser QA Warnings",
     }
     checks = []
     missing_sheets = sorted(required_sheets - set(wb.sheetnames))
@@ -4262,6 +4339,7 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     raw_tradelines_dates = wb.create_sheet("Raw Tradelines With Dates")
     dates_found_audit = wb.create_sheet("Dates Found Audit")
     date_issues = wb.create_sheet("Date Issues To Dispute")
+    parser_qa = wb.create_sheet("Parser QA Warnings")
     metro2_fcra = wb.create_sheet("Metro 2 + FCRA Review")
     metro2_requirements = wb.create_sheet("Metro 2 Requirements")
     metro2_guide_notes = wb.create_sheet("Metro 2 Guide Notes")
@@ -4541,6 +4619,29 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
                 row.get("next_step", ""),
             ]
             for row in data.get("date_issues_to_dispute", [])
+        ],
+    ])
+
+    _write_workbook_sheet(parser_qa, [
+        ["Warning ID", "Warning Type", "Severity", "Source File", "File Hash", "Bureau", "Page", "Account Name Guess", "Account Number Guess", "Raw Block Hash", "Raw Text Snippet", "Customer Visible", "Creates Dispute Issue", "Admin Action"],
+        *[
+            [
+                row.get("warning_id", ""),
+                row.get("warning_type", ""),
+                row.get("severity", ""),
+                row.get("source_filename", ""),
+                row.get("source_file_hash", ""),
+                row.get("bureau", ""),
+                row.get("page", ""),
+                row.get("account_name_guess", ""),
+                row.get("account_number_guess", ""),
+                row.get("raw_block_hash", ""),
+                row.get("raw_text_snippet", ""),
+                "Yes" if row.get("customer_visible") else "No",
+                "Yes" if row.get("creates_dispute_issue") else "No",
+                row.get("admin_action", ""),
+            ]
+            for row in data.get("parser_qa_warnings", [])
         ],
     ])
 
