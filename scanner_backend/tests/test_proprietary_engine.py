@@ -377,6 +377,7 @@ def test_parse_sample_report(tmp_path):
         "Side By Side Negative",
         "Raw Evidence Index",
         "QA Verification",
+        "Security Audit Summary",
         "Desktop Dashboard",
         "Desktop Staff Workbox",
         "Desktop Field Matrix",
@@ -506,6 +507,15 @@ def test_parse_sample_report(tmp_path):
     assert "Raw evidence present" in qa_text
     assert "Field evidence present" in qa_text
     assert "Production approval status" in qa_text
+    security_audit = workbook["Security Audit Summary"]
+    security_audit_text = " ".join(
+        str(security_audit.cell(row=row, column=column).value or "")
+        for row in range(1, security_audit.max_row + 1)
+        for column in range(1, security_audit.max_column + 1)
+    )
+    assert "Pre-Scan Health Check Result" in security_audit_text
+    assert "Safe Mode Enabled" in security_audit_text
+    assert "Scan Allowed" in security_audit_text
     desktop_dashboard = workbook["Desktop Dashboard"]
     dashboard_text = " ".join(
         str(desktop_dashboard.cell(row=row, column=column).value or "")

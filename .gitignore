@@ -35,6 +35,7 @@ scanner_backend/tests/**/__pycache__/
 scanner_backend/uploads/
 scanner_backend/output/
 scanner_backend/logs/
+scanner_backend/audit/
 scanner_backend/.venv/
 scanner_backend/.env
 scanner_backend/.pytest-tmp*/

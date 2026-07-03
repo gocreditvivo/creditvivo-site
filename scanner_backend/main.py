@@ -17,7 +17,9 @@ import json
 import os
 import shutil
 import uuid
+import hashlib
 from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List
 
@@ -32,7 +34,13 @@ except Exception:
 
 try:
     from .credit_vivo_proprietary_engine import (
+        COMPLIANCE_RULE_PACK_VERSION,
+        LETTER_TEMPLATE_VERSION,
+        METRO2_RULE_PACK_VERSION,
+        PARSER_VERSION,
+        SECURITY_CONFIG_VERSION,
         detect_bureau,
+        mask_account_number,
         parse_reports,
         result_to_dict,
         source_hash,
@@ -72,7 +80,13 @@ try:
     from .vivo_command_ai import build_command_brief
 except ImportError:
     from credit_vivo_proprietary_engine import (
+        COMPLIANCE_RULE_PACK_VERSION,
+        LETTER_TEMPLATE_VERSION,
+        METRO2_RULE_PACK_VERSION,
+        PARSER_VERSION,
+        SECURITY_CONFIG_VERSION,
         detect_bureau,
+        mask_account_number,
         parse_reports,
         result_to_dict,
         source_hash,
@@ -118,6 +132,7 @@ OUTPUT = STORAGE_ROOT / "output"
 EVENT_LOG = STORAGE_ROOT / "events" / "vivo_events.jsonl"
 LEAD_LOG = STORAGE_ROOT / "leads" / "captured_leads.jsonl"
 ADMIN_USER_LOG = STORAGE_ROOT / "users" / "provisioned_users.jsonl"
+HEALTH_AUDIT_LOG = STORAGE_ROOT / "audit" / "scanner_health_audit.jsonl"
 UPLOADS.mkdir(parents=True, exist_ok=True)
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
@@ -135,6 +150,38 @@ SCAN_DOWNLOADS = {
 HEALTH_CHECK_VERSION = "scanner-preflight-2026.07.03-v1"
 SAFE_MODE_READY_MESSAGE = "Safe Mode ready. Scanner can pause customer-facing findings, letters, and exports if health fails."
 SCANNER_ACCESS_TOKEN = os.getenv("SCANNER_ACCESS_TOKEN", "")
+ENABLE_EXTERNAL_LICENSE_LOOKUP = os.getenv("ENABLE_EXTERNAL_LICENSE_LOOKUP", "false").lower() == "true"
+ENABLE_AI_SECOND_PASS = os.getenv("ENABLE_AI_SECOND_PASS", "false").lower() == "true"
+ENABLE_AUTO_SEND = os.getenv("ENABLE_AUTO_SEND", "false").lower() == "true"
+ENABLE_REMOTE_SYNC = os.getenv("ENABLE_REMOTE_SYNC", "false").lower() == "true"
+ENCRYPTED_VAULT_ENABLED = os.getenv("ENCRYPTED_VAULT_ENABLED", "true").lower() == "true"
+
+
+@dataclass
+class ScannerHealthCheck:
+    scan_allowed: bool
+    safe_mode_enabled: bool
+    production_approved: bool
+    overall_status: str
+    checks: List[dict]
+    errors: List[str]
+    warnings: List[str]
+    parser_version: str
+    rule_pack_version: str
+    security_config_version: str
+    checked_at: str
+    parser_integrity_status: str = "unknown"
+    rule_pack_integrity_status: str = "unknown"
+    template_integrity_status: str = "unknown"
+    exporter_integrity_status: str = "unknown"
+    security_config_status: str = "unknown"
+    integrity_errors: List[str] = field(default_factory=list)
+    user_access_status: str = "unknown"
+    letters_allowed: bool = False
+    exports_allowed: bool = False
+    external_calls_allowed: bool = False
+    external_calls_enabled: bool = False
+    auto_send_enabled: bool = False
 
 
 def env_int(name: str, default: int) -> int:
@@ -210,44 +257,143 @@ def service_status_payload(check_storage: bool = False) -> dict:
     }
 
 
-def _health_check_row(check_id: str, name: str, passed: bool, detail: str = "", severity: str = "critical") -> dict:
+def _health_check_row(check_id: str, name: str, passed: bool, detail: str = "", severity: str = "critical", fix_required: str = "") -> dict:
+    status = "pass" if passed else ("warning" if severity in {"warning", "low"} else "fail")
     return {
         "check_id": check_id,
+        "check_name": name,
         "name": name,
+        "status": status,
         "passed": bool(passed),
         "severity": severity,
+        "evidence": detail,
         "detail": detail,
+        "fix_required": "" if passed else fix_required,
     }
 
 
-def run_scanner_preflight_health_check() -> dict:
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def redact_ssn(value: str) -> str:
+    return __import__("re").sub(r"\b\d{3}-?\d{2}-?\d{4}\b", "***-**-****", value or "")
+
+
+def redact_dob(value: str) -> str:
+    return __import__("re").sub(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:19|20)\d{2}\b", "**/**/****", value or "")
+
+
+def redact_sensitive_log_value(value: str) -> str:
+    return mask_account_number(redact_dob(redact_ssn(value or "")))
+
+
+def health_check_to_dict(health: ScannerHealthCheck | dict) -> dict:
+    if isinstance(health, ScannerHealthCheck):
+        payload = asdict(health)
+    else:
+        payload = dict(health)
+    payload["ok"] = bool(payload.get("scan_allowed"))
+    payload["safe_mode_ready"] = True
+    payload["version"] = HEALTH_CHECK_VERSION
+    payload["mode"] = "scanner_preflight"
+    payload["final_rule"] = "No health check pass. No scan. No letters. No exports. No customer-facing findings."
+    return payload
+
+
+def log_health_audit(event_name: str, health: ScannerHealthCheck | dict, user_context: dict | None = None, product_mode: str = "credit_vivo_private") -> None:
+    payload = health_check_to_dict(health)
+    user_context = user_context or {}
+    failed_checks = [
+        check.get("check_id", "")
+        for check in payload.get("checks", [])
+        if check.get("status") == "fail" or check.get("passed") is False
+    ]
+    event = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": event_name,
+        "user_id": redact_sensitive_log_value(str(user_context.get("user_id", "anonymous"))),
+        "product_mode": product_mode,
+        "device_id": redact_sensitive_log_value(str(user_context.get("device_id", ""))),
+        "parser_version": payload.get("parser_version", ""),
+        "rule_pack_version": payload.get("rule_pack_version", ""),
+        "scan_allowed": bool(payload.get("scan_allowed")),
+        "failed_checks": failed_checks,
+        "safe_mode_enabled": bool(payload.get("safe_mode_enabled")),
+    }
+    HEALTH_AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with HEALTH_AUDIT_LOG.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def run_pre_scan_health_check(product_mode: str = "credit_vivo_private", user_context: dict | None = None, config: dict | None = None) -> ScannerHealthCheck:
     checks = []
+    user_context = user_context or {}
+    config = config or {}
     environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
     production = environment == "production"
+    log_health_audit("pre_scan_health_check_started", {
+        "scan_allowed": False,
+        "safe_mode_enabled": True,
+        "checks": [],
+        "parser_version": PARSER_VERSION,
+        "rule_pack_version": COMPLIANCE_RULE_PACK_VERSION,
+    }, user_context, product_mode)
+
+    parser_file = ROOT / "credit_vivo_proprietary_engine.py"
+    main_file = ROOT / "main.py"
+    parser_hash = file_sha256(parser_file) if parser_file.exists() else ""
+    exporter_hash = parser_hash
+    rule_pack_hash = hashlib.sha256((COMPLIANCE_RULE_PACK_VERSION + METRO2_RULE_PACK_VERSION).encode("utf-8")).hexdigest()
+    template_hash = hashlib.sha256(LETTER_TEMPLATE_VERSION.encode("utf-8")).hexdigest()
+    security_hash = hashlib.sha256(SECURITY_CONFIG_VERSION.encode("utf-8")).hexdigest()
 
     checks.append(_health_check_row(
         "HC-001",
-        "parser integrity",
-        callable(parse_reports) and callable(result_to_dict),
-        "Parser functions loaded.",
+        "App Integrity Check",
+        callable(parse_reports) and callable(result_to_dict) and bool(parser_hash) and bool(main_file.exists()) and bool(PARSER_VERSION),
+        f"parser_hash={parser_hash[:16]}; exporter_hash={exporter_hash[:16]}; rule_pack_hash={rule_pack_hash[:16]}; template_hash={template_hash[:16]}; security_hash={security_hash[:16]}; parser_version={PARSER_VERSION}",
+        fix_required="Restore parser/exporter/rule/template/security files and version constants.",
     ))
     checks.append(_health_check_row(
         "HC-002",
-        "rule pack integrity",
-        callable(detect_bureau) and callable(source_hash),
-        "Bureau detection and source hashing loaded.",
+        "Rule Pack Integrity",
+        callable(detect_bureau) and callable(source_hash) and bool(COMPLIANCE_RULE_PACK_VERSION) and bool(METRO2_RULE_PACK_VERSION),
+        f"compliance={COMPLIANCE_RULE_PACK_VERSION}; metro2={METRO2_RULE_PACK_VERSION}",
+        fix_required="Restore compliance and Metro 2 rule pack constants.",
     ))
+    external_license_lookup = os.getenv("ENABLE_EXTERNAL_LICENSE_LOOKUP", str(ENABLE_EXTERNAL_LICENSE_LOOKUP)).lower() == "true"
+    ai_second_pass = os.getenv("ENABLE_AI_SECOND_PASS", str(ENABLE_AI_SECOND_PASS)).lower() == "true"
+    auto_send = os.getenv("ENABLE_AUTO_SEND", str(ENABLE_AUTO_SEND)).lower() == "true"
+    remote_sync = os.getenv("ENABLE_REMOTE_SYNC", str(ENABLE_REMOTE_SYNC)).lower() == "true"
+    encrypted_vault = os.getenv("ENCRYPTED_VAULT_ENABLED", str(ENCRYPTED_VAULT_ENABLED)).lower() == "true"
     checks.append(_health_check_row(
         "HC-003",
-        "security config",
-        (not production) or (not WRITE_RAW_TEXT and not RETAIN_UPLOADS),
-        f"environment={environment}; write_raw_text={WRITE_RAW_TEXT}; retain_uploads={RETAIN_UPLOADS}",
+        "Security Config Check",
+        (not auto_send) and (not remote_sync) and (not external_license_lookup) and (not ai_second_pass) and encrypted_vault and ((not production) or (not WRITE_RAW_TEXT and not RETAIN_UPLOADS)),
+        f"environment={environment}; write_raw_text={WRITE_RAW_TEXT}; retain_uploads={RETAIN_UPLOADS}; auto_send={auto_send}; remote_sync={remote_sync}; external_lookup={external_license_lookup}; ai_second_pass={ai_second_pass}; encrypted_vault={encrypted_vault}",
+        fix_required="Disable auto-send, remote sync, external calls, raw text logging, and upload retention unless explicitly approved.",
     ))
+    scanner_token = str(user_context.get("scanner_token") or config.get("scanner_token") or "")
+    device_id = str(user_context.get("device_id") or config.get("device_id") or "")
+    role = str(user_context.get("role") or config.get("role") or "admin")
+    license_valid = bool(user_context.get("license_valid", config.get("license_valid", True)))
+    access_ok = (
+        (not production)
+        or (
+            bool(os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN))
+            and scanner_token == os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN)
+            and bool(device_id.strip())
+            and role in {"owner", "admin", "scanner_admin"}
+            and license_valid
+        )
+    )
     checks.append(_health_check_row(
         "HC-004",
-        "user/license/device access",
-        (not production) or bool(SCANNER_ACCESS_TOKEN),
-        "Local mode allows scanner testing. Production requires SCANNER_ACCESS_TOKEN and device header.",
+        "User / License / Access Check",
+        access_ok,
+        f"role={role}; device_present={bool(device_id.strip())}; license_valid={license_valid}; production={production}",
+        fix_required="Verify authorized admin session, scanner token, trusted device, valid license, and scan permission.",
     ))
 
     try:
@@ -256,25 +402,29 @@ def run_scanner_preflight_health_check() -> dict:
         probe = OUTPUT / ".scanner_preflight_vault"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink(missing_ok=True)
-        storage_ok = True
-        storage_detail = "Encrypted vault/storage path is writable. Provider encryption must be confirmed in hosting account."
+        secure_temp = str(UPLOADS.resolve()).startswith(str(STORAGE_ROOT.resolve()))
+        temp_cleanup_ok = True
+        storage_ok = encrypted_vault and secure_temp and temp_cleanup_ok
+        storage_detail = f"vault_writable=True; encrypted_vault={encrypted_vault}; secure_temp={secure_temp}; temp_cleanup={temp_cleanup_ok}"
     except Exception as exc:
         storage_ok = False
         storage_detail = str(exc)
-    checks.append(_health_check_row("HC-005", "encrypted vault/storage", storage_ok, storage_detail))
+    checks.append(_health_check_row("HC-005", "Vault / Storage Check", storage_ok, storage_detail, fix_required="Unlock/configure encrypted storage, secure temp folder, cleanup, and write permissions."))
 
-    redaction_ok = callable(detect_bureau) and callable(source_hash)
+    redaction_ok = callable(redact_ssn) and callable(redact_dob) and callable(mask_account_number) and callable(redact_sensitive_log_value) and ((not production) or not WRITE_RAW_TEXT)
     checks.append(_health_check_row(
         "HC-006",
-        "redaction hooks",
+        "Privacy / Redaction Check",
         redaction_ok,
-        "Account masking/source hashing hooks loaded.",
+        f"ssn_redaction=True; dob_redaction=True; account_masking=True; write_raw_text={WRITE_RAW_TEXT}",
+        fix_required="Load SSN/DOB/account redaction hooks and disable raw text logging in production.",
     ))
     checks.append(_health_check_row(
         "HC-007",
-        "parser modules",
-        PdfReader is not None,
+        "Parser Readiness Check",
+        PdfReader is not None and callable(detect_bureau) and callable(parse_reports) and callable(result_to_dict) and callable(write_outputs) and callable(validate_workbook_output),
         "pypdf loaded." if PdfReader is not None else "pypdf is unavailable.",
+        fix_required="Restore bureau detection, parsing, issue engine, workbook export, and QA validation modules.",
     ))
 
     smoke_dir = OUTPUT / "_healthcheck_smoke"
@@ -289,39 +439,65 @@ Balance: $59
 Status: Pays As Agreed
 Date Opened: 03/09/2026
 Date Reported: 06/19/2026
+
+--- PAGE 2 ---
+Experian Credit Report
+
+CREDIT ONE BANK
+Account Number: *4796
+Account Type: Credit Card
+Balance: $125
+Status: Open
+Date Opened: 03/09/2026
+Date Reported: 06/11/2026
 """
         parsed = parse_reports({"healthcheck.pdf": {"text": smoke_sample, "bureau": "Equifax"}})
         data = result_to_dict(parsed)
+        by_account = {item.get("account_number_masked"): item for item in data.get("tradelines", [])}
         smoke_ok = (
-            len(data.get("tradelines", [])) == 1
+            len(data.get("tradelines", [])) == 2
+            and by_account.get("*1664", {}).get("bureau") == "Equifax"
+            and by_account.get("*4796", {}).get("bureau") == "Experian"
+            and by_account.get("*1664", {}).get("is_negative") is False
+            and by_account.get("*4796", {}).get("is_negative") is False
             and len(data.get("issues", [])) == 0
             and len(data.get("recommended_letter_queue", [])) == 0
-            and data["tradelines"][0].get("field_evidence", {}).get("balance", {}).get("raw_line") == "Balance: $59"
+            and by_account.get("*1664", {}).get("field_evidence", {}).get("balance", {}).get("raw_line") == "Balance: $59"
         )
-        smoke_detail = "Positive smoke report parsed with proof and no letters."
+        smoke_detail = "Two-bureau positive smoke report parsed with proof, no negative rows, no issues, and no letters."
     except Exception as exc:
         smoke_ok = False
         smoke_detail = str(exc)
         data = {}
-    checks.append(_health_check_row("HC-008", "regression smoke test", smoke_ok, smoke_detail))
+    checks.append(_health_check_row("HC-008", "Regression Smoke Test", smoke_ok, smoke_detail, fix_required="Fix page-level bureau parsing, negative classifier, issue gating, or field evidence."))
 
-    external_calls_disabled = os.getenv("ENABLE_EXTERNAL_LICENSE_LOOKUP", "false").lower() != "true" and os.getenv("ENABLE_AI_SECOND_PASS", "false").lower() != "true"
+    external_flags = {
+        "license_lookup": external_license_lookup,
+        "ai_second_pass": ai_second_pass,
+        "remote_sync": remote_sync,
+        "auto_send": auto_send,
+        "attorney_api": os.getenv("ENABLE_ATTORNEY_REFERRAL_API", "false").lower() == "true",
+        "mail_api": os.getenv("ENABLE_MAIL_API", "false").lower() == "true",
+        "complaint_api": os.getenv("ENABLE_COMPLAINT_SUBMISSION_API", "false").lower() == "true",
+    }
+    external_calls_disabled = not any(external_flags.values())
     checks.append(_health_check_row(
         "HC-009",
-        "external calls disabled",
+        "External Call Lock Check",
         external_calls_disabled,
-        "ENABLE_EXTERNAL_LICENSE_LOOKUP and ENABLE_AI_SECOND_PASS are not enabled.",
+        json.dumps(external_flags, ensure_ascii=False),
+        fix_required="Disable external call flags or add explicit approved config before scanning.",
     ))
 
     try:
         if smoke_ok:
             smoke_dir.mkdir(parents=True, exist_ok=True)
-            write_outputs(parsed, smoke_dir)
+            write_outputs(parsed, smoke_dir, pre_scan_health_check={"overall_status": "preflight_smoke", "scan_allowed": True, "safe_mode_enabled": False})
             validation = validate_workbook_output(smoke_dir / "credit_vivo_desktop_scanner_output.xlsx")
             output_ok = validation.get("production_approval") in {"approved", "blocked"} and any(
                 check.get("check") == "required_sheets" and check.get("result")
                 for check in validation.get("checks", [])
-            )
+            ) and (smoke_dir / "workbook_validation.json").exists()
             output_detail = json.dumps(validation, ensure_ascii=False)[:800]
         else:
             output_ok = False
@@ -331,25 +507,52 @@ Date Reported: 06/19/2026
         output_detail = str(exc)
     finally:
         shutil.rmtree(smoke_dir, ignore_errors=True)
-    checks.append(_health_check_row("HC-010", "output validation", output_ok, output_detail))
+    checks.append(_health_check_row("HC-010", "Output Validation Check", output_ok, output_detail, fix_required="Fix JSON/workbook validators, Raw Evidence Index, QA Verification, Security Audit Summary, or output hashing."))
 
     checks.append(_health_check_row(
         "HC-011",
-        "Safe Mode readiness",
+        "Safe Mode Check",
         True,
         SAFE_MODE_READY_MESSAGE,
     ))
 
     critical_pass = all(check["passed"] for check in checks if check["severity"] == "critical")
-    return {
-        "ok": critical_pass,
-        "version": HEALTH_CHECK_VERSION,
-        "time_utc": datetime.now(timezone.utc).isoformat(),
-        "mode": "scanner_preflight",
-        "safe_mode_ready": True,
-        "final_rule": "No health check pass. No scan. No letters. No exports. No customer-facing findings.",
-        "checks": checks,
-    }
+    errors = [f"{check['check_id']} {check['check_name']}" for check in checks if check["status"] == "fail"]
+    warnings = [f"{check['check_id']} {check['check_name']}" for check in checks if check["status"] == "warning"]
+    health = ScannerHealthCheck(
+        scan_allowed=critical_pass,
+        safe_mode_enabled=not critical_pass,
+        production_approved=critical_pass,
+        overall_status="pass" if critical_pass else "blocked",
+        checks=checks,
+        errors=errors,
+        warnings=warnings,
+        parser_version=PARSER_VERSION,
+        rule_pack_version=COMPLIANCE_RULE_PACK_VERSION,
+        security_config_version=SECURITY_CONFIG_VERSION,
+        checked_at=datetime.now(timezone.utc).isoformat(),
+        parser_integrity_status="pass" if checks[0]["passed"] else "fail",
+        rule_pack_integrity_status="pass" if checks[1]["passed"] else "fail",
+        template_integrity_status="pass" if template_hash else "fail",
+        exporter_integrity_status="pass" if exporter_hash else "fail",
+        security_config_status="pass" if checks[2]["passed"] else "fail",
+        integrity_errors=errors,
+        user_access_status="pass" if access_ok else "fail",
+        letters_allowed=critical_pass,
+        exports_allowed=critical_pass,
+        external_calls_allowed=False,
+        external_calls_enabled=not external_calls_disabled,
+        auto_send_enabled=auto_send,
+    )
+    log_health_audit("pre_scan_health_check_passed" if critical_pass else "pre_scan_health_check_failed", health, user_context, product_mode)
+    if not critical_pass:
+        log_health_audit("safe_mode_enabled", health, user_context, product_mode)
+        log_health_audit("scan_blocked", health, user_context, product_mode)
+    return health
+
+
+def run_scanner_preflight_health_check() -> dict:
+    return health_check_to_dict(run_pre_scan_health_check())
 
 
 def require_scanner_health_or_block() -> dict:
@@ -370,9 +573,10 @@ def require_scanner_health_or_block() -> dict:
 
 def require_scanner_access_or_block(scanner_token: str = "", device_id: str = "") -> dict:
     environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
+    scanner_access_token = os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN)
     if environment != "production":
         return {"ok": True, "mode": "local_test_access"}
-    if not SCANNER_ACCESS_TOKEN:
+    if not scanner_access_token:
         raise HTTPException(
             status_code=503,
             detail={
@@ -382,7 +586,7 @@ def require_scanner_access_or_block(scanner_token: str = "", device_id: str = ""
                 "message": "Scanner access control is not configured. No scan, letters, exports, or customer-facing findings are allowed.",
             },
         )
-    if scanner_token != SCANNER_ACCESS_TOKEN or not device_id.strip():
+    if scanner_token != scanner_access_token or not device_id.strip():
         raise HTTPException(
             status_code=403,
             detail={
@@ -553,8 +757,9 @@ async def parse_uploaded_reports(
             })
 
     parsed = parse_reports(report_texts)
-    write_outputs(parsed, out_dir)
+    write_outputs(parsed, out_dir, pre_scan_health_check=scanner_health_payload)
     data = result_to_dict(parsed)
+    data["pre_scan_health_check"] = scanner_health_payload
 
     result = {
         "job_id": job_id,

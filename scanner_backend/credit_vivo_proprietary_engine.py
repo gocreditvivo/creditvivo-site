@@ -52,6 +52,13 @@ except Exception:
     get_column_letter = None
 
 
+PARSER_VERSION = "16.1"
+COMPLIANCE_RULE_PACK_VERSION = "2026.07.03-v1"
+METRO2_RULE_PACK_VERSION = "metro2-review-2026.07.03-v1"
+LETTER_TEMPLATE_VERSION = "letters-2026.07.03-v1"
+SECURITY_CONFIG_VERSION = "scanner-security-2026.07.03-v1"
+
+
 # -----------------------------
 # Utility
 # -----------------------------
@@ -3316,6 +3323,11 @@ def result_to_dict(result: ParseResult) -> dict:
     data = {
         "engine": result.engine,
         "version": result.version,
+        "parser_version": PARSER_VERSION,
+        "compliance_rule_pack_version": COMPLIANCE_RULE_PACK_VERSION,
+        "metro2_rule_pack_version": METRO2_RULE_PACK_VERSION,
+        "letter_template_version": LETTER_TEMPLATE_VERSION,
+        "security_config_version": SECURITY_CONFIG_VERSION,
         "paid_ai_used": result.paid_ai_used,
         "files": result.files,
         "tradelines": tradelines,
@@ -4203,6 +4215,7 @@ def validate_workbook_output(path: Path) -> dict:
         "Draft Letters",
         "Raw Evidence Index",
         "QA Verification",
+        "Security Audit Summary",
     }
     checks = []
     missing_sheets = sorted(required_sheets - set(wb.sheetnames))
@@ -4240,6 +4253,7 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     side_by_side_negative = wb.create_sheet("Side By Side Negative")
     raw_evidence_index = wb.create_sheet("Raw Evidence Index")
     qa_verification = wb.create_sheet("QA Verification")
+    security_audit = wb.create_sheet("Security Audit Summary")
     desktop_dashboard = wb.create_sheet("Desktop Dashboard")
     desktop_workbox = wb.create_sheet("Desktop Staff Workbox")
     desktop_field_matrix = wb.create_sheet("Desktop Field Matrix")
@@ -4271,6 +4285,15 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
         ["Review Items", len(data.get("tradelines", []))],
         ["Detected Errors / Review Points", len(data.get("issues", []))],
         ["Draft Letters Queued", len(data.get("recommended_letter_queue", []))],
+        ["Health Check Status", data.get("pre_scan_health_check", {}).get("overall_status", "not_attached")],
+        ["Safe Mode Enabled", "Yes" if data.get("pre_scan_health_check", {}).get("safe_mode_enabled") else "No"],
+        ["Scan Allowed", "Yes" if data.get("pre_scan_health_check", {}).get("scan_allowed") else "No"],
+        ["Parser Integrity", data.get("pre_scan_health_check", {}).get("parser_integrity_status", "")],
+        ["Rule Pack Integrity", data.get("pre_scan_health_check", {}).get("rule_pack_integrity_status", "")],
+        ["Security Config Status", data.get("pre_scan_health_check", {}).get("security_config_status", "")],
+        ["External Calls Enabled", "Yes" if data.get("pre_scan_health_check", {}).get("external_calls_enabled") else "No"],
+        ["Auto-Send Enabled", "Yes" if data.get("pre_scan_health_check", {}).get("auto_send_enabled") else "No"],
+        ["Production Approved", "Yes" if data.get("pre_scan_health_check", {}).get("production_approved") else "No"],
         ["Customer Message", data.get("customer_summary", {}).get("message", "")],
         ["Important Notice", "Draft review data only. Nothing is sent without customer approval and admin review."],
     ])
@@ -4278,7 +4301,35 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     _write_workbook_sheet(bureau_comparison, build_three_bureau_comparison_rows(data))
     _write_workbook_sheet(side_by_side_negative, build_side_by_side_negative_rows(data))
     _write_workbook_sheet(raw_evidence_index, build_raw_evidence_index_rows(data))
-    _write_workbook_sheet(qa_verification, build_qa_verification_rows(data))
+    qa_rows = build_qa_verification_rows(data)
+    health = data.get("pre_scan_health_check", {})
+    for check in health.get("checks", []):
+        qa_rows.append([
+            check.get("check_id", ""),
+            check.get("check_name") or check.get("name", ""),
+            str(check.get("status") or ("PASS" if check.get("passed") else "FAIL")).upper(),
+            check.get("severity", ""),
+            check.get("evidence") or check.get("detail", ""),
+            check.get("fix_required", ""),
+        ])
+    _write_workbook_sheet(qa_verification, qa_rows)
+    _write_workbook_sheet(security_audit, [
+        ["Field", "Value"],
+        ["Pre-Scan Health Check Result", health.get("overall_status", "not_attached")],
+        ["Safe Mode Enabled", "Yes" if health.get("safe_mode_enabled") else "No"],
+        ["Scan Allowed", "Yes" if health.get("scan_allowed") else "No"],
+        ["Letters Allowed", "Yes" if health.get("letters_allowed") else "No"],
+        ["Exports Allowed", "Yes" if health.get("exports_allowed") else "No"],
+        ["External Calls Allowed", "Yes" if health.get("external_calls_allowed") else "No"],
+        ["Production Approved", "Yes" if health.get("production_approved") else "No"],
+        ["Failed Checks", "; ".join(health.get("errors", []))],
+        ["Warnings", "; ".join(health.get("warnings", []))],
+        ["Checked At", health.get("checked_at", "")],
+        ["User / Device / License", health.get("user_access_status", "")],
+        ["Parser Version", health.get("parser_version", "")],
+        ["Rule Pack Version", health.get("rule_pack_version", "")],
+        ["Security Config Version", health.get("security_config_version", "")],
+    ])
 
     dashboard_sections = build_desktop_customer_dashboard(data)
     dashboard_summary = next((section for section in dashboard_sections if section.get("section") == "summary"), {})
@@ -4841,9 +4892,11 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     wb.save(out_dir / "credit_vivo_desktop_scanner_output.xlsx")
 
 
-def write_outputs(result: ParseResult, out_dir: Path) -> None:
+def write_outputs(result: ParseResult, out_dir: Path, pre_scan_health_check: Optional[dict] = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     data = result_to_dict(result)
+    if pre_scan_health_check is not None:
+        data["pre_scan_health_check"] = pre_scan_health_check
     (out_dir / "credit_vivo_parser_result.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     # Tradelines CSV
