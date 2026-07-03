@@ -3303,8 +3303,6 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
         "SOP Approval Gate",
         "SOP Escalation Rule",
         "Tracking Status",
-        "Missing Bureaus",
-        "Matched Bureaus",
         "Group ID",
     ])
 
@@ -3423,8 +3421,6 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
             sop["approval"],
             sop["escalation"],
             "draft_not_sent_customer_approval_required",
-            missing_bureaus,
-            matched_bureaus,
             group_id,
         ])
         return row

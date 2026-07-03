@@ -375,7 +375,8 @@ def test_parse_sample_report(tmp_path):
     assert "Experian Raw Evidence" in headers
     assert "Equifax Balance" in headers
     assert "TransUnion Balance" in headers
-    assert headers[-19:] == [
+    assert len(headers) == len(set(headers))
+    assert headers[-17:] == [
         "Dispute Targets",
         "Primary Dispute Method",
         "Secondary Dispute Methods",
@@ -392,8 +393,6 @@ def test_parse_sample_report(tmp_path):
         "SOP Approval Gate",
         "SOP Escalation Rule",
         "Tracking Status",
-        "Missing Bureaus",
-        "Matched Bureaus",
         "Group ID",
     ]
     primary_bureau_column = headers.index("Primary Bureau") + 1
