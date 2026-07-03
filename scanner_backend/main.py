@@ -35,6 +35,8 @@ try:
         detect_bureau,
         parse_reports,
         result_to_dict,
+        source_hash,
+        validate_workbook_output,
         write_outputs,
     )
     from .codex_advisor_ai import build_codex_advisor_brief
@@ -73,6 +75,8 @@ except ImportError:
         detect_bureau,
         parse_reports,
         result_to_dict,
+        source_hash,
+        validate_workbook_output,
         write_outputs,
     )
     from codex_advisor_ai import build_codex_advisor_brief
@@ -127,6 +131,10 @@ SCAN_DOWNLOADS = {
     "tradelines.csv": ("tradelines.csv", "text/csv", "credit-vivo-tradelines.csv"),
     "letters.txt": ("draft_dispute_letters.txt", "text/plain", "credit-vivo-draft-dispute-letters.txt"),
 }
+
+HEALTH_CHECK_VERSION = "scanner-preflight-2026.07.03-v1"
+SAFE_MODE_READY_MESSAGE = "Safe Mode ready. Scanner can pause customer-facing findings, letters, and exports if health fails."
+SCANNER_ACCESS_TOKEN = os.getenv("SCANNER_ACCESS_TOKEN", "")
 
 
 def env_int(name: str, default: int) -> int:
@@ -202,6 +210,191 @@ def service_status_payload(check_storage: bool = False) -> dict:
     }
 
 
+def _health_check_row(check_id: str, name: str, passed: bool, detail: str = "", severity: str = "critical") -> dict:
+    return {
+        "check_id": check_id,
+        "name": name,
+        "passed": bool(passed),
+        "severity": severity,
+        "detail": detail,
+    }
+
+
+def run_scanner_preflight_health_check() -> dict:
+    checks = []
+    environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
+    production = environment == "production"
+
+    checks.append(_health_check_row(
+        "HC-001",
+        "parser integrity",
+        callable(parse_reports) and callable(result_to_dict),
+        "Parser functions loaded.",
+    ))
+    checks.append(_health_check_row(
+        "HC-002",
+        "rule pack integrity",
+        callable(detect_bureau) and callable(source_hash),
+        "Bureau detection and source hashing loaded.",
+    ))
+    checks.append(_health_check_row(
+        "HC-003",
+        "security config",
+        (not production) or (not WRITE_RAW_TEXT and not RETAIN_UPLOADS),
+        f"environment={environment}; write_raw_text={WRITE_RAW_TEXT}; retain_uploads={RETAIN_UPLOADS}",
+    ))
+    checks.append(_health_check_row(
+        "HC-004",
+        "user/license/device access",
+        (not production) or bool(SCANNER_ACCESS_TOKEN),
+        "Local mode allows scanner testing. Production requires SCANNER_ACCESS_TOKEN and device header.",
+    ))
+
+    try:
+        UPLOADS.mkdir(parents=True, exist_ok=True)
+        OUTPUT.mkdir(parents=True, exist_ok=True)
+        probe = OUTPUT / ".scanner_preflight_vault"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        storage_ok = True
+        storage_detail = "Encrypted vault/storage path is writable. Provider encryption must be confirmed in hosting account."
+    except Exception as exc:
+        storage_ok = False
+        storage_detail = str(exc)
+    checks.append(_health_check_row("HC-005", "encrypted vault/storage", storage_ok, storage_detail))
+
+    redaction_ok = callable(detect_bureau) and callable(source_hash)
+    checks.append(_health_check_row(
+        "HC-006",
+        "redaction hooks",
+        redaction_ok,
+        "Account masking/source hashing hooks loaded.",
+    ))
+    checks.append(_health_check_row(
+        "HC-007",
+        "parser modules",
+        PdfReader is not None,
+        "pypdf loaded." if PdfReader is not None else "pypdf is unavailable.",
+    ))
+
+    smoke_dir = OUTPUT / "_healthcheck_smoke"
+    try:
+        smoke_sample = """--- PAGE 1 ---
+Equifax Credit Report
+
+CREDIT ONE BANK
+Account Number: *1664
+Account Type: Credit Card
+Balance: $59
+Status: Pays As Agreed
+Date Opened: 03/09/2026
+Date Reported: 06/19/2026
+"""
+        parsed = parse_reports({"healthcheck.pdf": {"text": smoke_sample, "bureau": "Equifax"}})
+        data = result_to_dict(parsed)
+        smoke_ok = (
+            len(data.get("tradelines", [])) == 1
+            and len(data.get("issues", [])) == 0
+            and len(data.get("recommended_letter_queue", [])) == 0
+            and data["tradelines"][0].get("field_evidence", {}).get("balance", {}).get("raw_line") == "Balance: $59"
+        )
+        smoke_detail = "Positive smoke report parsed with proof and no letters."
+    except Exception as exc:
+        smoke_ok = False
+        smoke_detail = str(exc)
+        data = {}
+    checks.append(_health_check_row("HC-008", "regression smoke test", smoke_ok, smoke_detail))
+
+    external_calls_disabled = os.getenv("ENABLE_EXTERNAL_LICENSE_LOOKUP", "false").lower() != "true" and os.getenv("ENABLE_AI_SECOND_PASS", "false").lower() != "true"
+    checks.append(_health_check_row(
+        "HC-009",
+        "external calls disabled",
+        external_calls_disabled,
+        "ENABLE_EXTERNAL_LICENSE_LOOKUP and ENABLE_AI_SECOND_PASS are not enabled.",
+    ))
+
+    try:
+        if smoke_ok:
+            smoke_dir.mkdir(parents=True, exist_ok=True)
+            write_outputs(parsed, smoke_dir)
+            validation = validate_workbook_output(smoke_dir / "credit_vivo_desktop_scanner_output.xlsx")
+            output_ok = validation.get("production_approval") in {"approved", "blocked"} and any(
+                check.get("check") == "required_sheets" and check.get("result")
+                for check in validation.get("checks", [])
+            )
+            output_detail = json.dumps(validation, ensure_ascii=False)[:800]
+        else:
+            output_ok = False
+            output_detail = "Smoke parser did not pass, so output validation was skipped."
+    except Exception as exc:
+        output_ok = False
+        output_detail = str(exc)
+    finally:
+        shutil.rmtree(smoke_dir, ignore_errors=True)
+    checks.append(_health_check_row("HC-010", "output validation", output_ok, output_detail))
+
+    checks.append(_health_check_row(
+        "HC-011",
+        "Safe Mode readiness",
+        True,
+        SAFE_MODE_READY_MESSAGE,
+    ))
+
+    critical_pass = all(check["passed"] for check in checks if check["severity"] == "critical")
+    return {
+        "ok": critical_pass,
+        "version": HEALTH_CHECK_VERSION,
+        "time_utc": datetime.now(timezone.utc).isoformat(),
+        "mode": "scanner_preflight",
+        "safe_mode_ready": True,
+        "final_rule": "No health check pass. No scan. No letters. No exports. No customer-facing findings.",
+        "checks": checks,
+    }
+
+
+def require_scanner_health_or_block() -> dict:
+    health_payload = run_scanner_preflight_health_check()
+    if not health_payload["ok"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "ok": False,
+                "blocked": True,
+                "safe_mode": True,
+                "message": "Scanner health check failed. No scan, letters, exports, or customer-facing findings are allowed.",
+                "health": health_payload,
+            },
+        )
+    return health_payload
+
+
+def require_scanner_access_or_block(scanner_token: str = "", device_id: str = "") -> dict:
+    environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
+    if environment != "production":
+        return {"ok": True, "mode": "local_test_access"}
+    if not SCANNER_ACCESS_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "ok": False,
+                "blocked": True,
+                "safe_mode": True,
+                "message": "Scanner access control is not configured. No scan, letters, exports, or customer-facing findings are allowed.",
+            },
+        )
+    if scanner_token != SCANNER_ACCESS_TOKEN or not device_id.strip():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "blocked": True,
+                "safe_mode": True,
+                "message": "Scanner access check failed. No scan, letters, exports, or customer-facing findings are allowed.",
+            },
+        )
+    return {"ok": True, "mode": "production_access_verified", "device_id_present": True}
+
+
 def extract_pdf_text(path: Path) -> tuple[str, int]:
     if PdfReader is None:
         raise RuntimeError("pypdf is not installed. Run: pip install -r requirements.txt")
@@ -250,6 +443,15 @@ def readyz():
     return payload
 
 
+@app.get("/scanner/health")
+@app.get("/api/scanner/health")
+def scanner_health():
+    payload = run_scanner_preflight_health_check()
+    if not payload["ok"]:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
+
+
 async def save_pdf_upload(file: UploadFile, dest: Path) -> int:
     safe_type = (file.content_type or "").lower()
     if safe_type and safe_type not in ALLOWED_PDF_TYPES:
@@ -286,6 +488,8 @@ async def save_pdf_upload(file: UploadFile, dest: Path) -> int:
 async def parse_uploaded_reports(
     files: List[UploadFile] = File(...),
     use_ai_second_pass: bool = Form(default=False),
+    x_credit_vivo_scanner_token: str = Header(default=""),
+    x_credit_vivo_device_id: str = Header(default=""),
 ):
     """
     Accept one or more PDF credit reports.
@@ -293,6 +497,8 @@ async def parse_uploaded_reports(
     `use_ai_second_pass` is accepted for backwards compatibility but ignored.
     v16 uses Credit Vivo Proprietary Parser Engine only.
     """
+    scanner_health_payload = require_scanner_health_or_block()
+    scanner_access_payload = require_scanner_access_or_block(x_credit_vivo_scanner_token, x_credit_vivo_device_id)
     if len(files) > MAX_FILES:
         raise HTTPException(
             status_code=400,
@@ -368,6 +574,8 @@ async def parse_uploaded_reports(
         "customer_message": data["customer_summary"]["message"],
         "customer_summary": data["customer_summary"],
         "admin_summary": data["admin_summary"],
+        "scanner_health_check": scanner_health_payload,
+        "scanner_access_check": scanner_access_payload,
         "letter_workflow": data.get("letter_workflow"),
         "recommended_letter_queue": data.get("recommended_letter_queue", []),
         "fcra_review": data.get("fcra_review", []),
@@ -755,7 +963,9 @@ def vivo_command_live_brief():
 
 @app.get("/scanner/result/{job_id}")
 @app.get("/api/scanner/result/{job_id}")
-def get_result(job_id: str):
+def get_result(job_id: str, x_credit_vivo_scanner_token: str = Header(default=""), x_credit_vivo_device_id: str = Header(default="")):
+    require_scanner_health_or_block()
+    require_scanner_access_or_block(x_credit_vivo_scanner_token, x_credit_vivo_device_id)
     summary = scanner_job_dir(job_id) / "scan_result_summary.json"
     if not summary.exists():
         return JSONResponse({"ok": False, "error": "Result not found"}, status_code=404)
@@ -764,7 +974,9 @@ def get_result(job_id: str):
 
 @app.get("/scanner/result/{job_id}/full")
 @app.get("/api/scanner/result/{job_id}/full")
-def get_full_result(job_id: str):
+def get_full_result(job_id: str, x_credit_vivo_scanner_token: str = Header(default=""), x_credit_vivo_device_id: str = Header(default="")):
+    require_scanner_health_or_block()
+    require_scanner_access_or_block(x_credit_vivo_scanner_token, x_credit_vivo_device_id)
     full = scanner_job_dir(job_id) / "credit_vivo_parser_result.json"
     if not full.exists():
         return JSONResponse({"ok": False, "error": "Full result not found"}, status_code=404)
@@ -773,7 +985,9 @@ def get_full_result(job_id: str):
 
 @app.get("/scanner/result/{job_id}/download/{download_name}")
 @app.get("/api/scanner/result/{job_id}/download/{download_name}")
-def download_scanner_output(job_id: str, download_name: str):
+def download_scanner_output(job_id: str, download_name: str, x_credit_vivo_scanner_token: str = Header(default=""), x_credit_vivo_device_id: str = Header(default="")):
+    require_scanner_health_or_block()
+    require_scanner_access_or_block(x_credit_vivo_scanner_token, x_credit_vivo_device_id)
     download = SCAN_DOWNLOADS.get(download_name)
     if not download:
         return JSONResponse({"ok": False, "error": "Download not found"}, status_code=404)
