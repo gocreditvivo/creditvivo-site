@@ -1,0 +1,22 @@
+{
+  "endpoint": "GET /member/portal",
+  "requiredProductionGate": {
+    "healthCheckPassed": true,
+    "groundTruthPassed": true,
+    "qaVerificationPassed": true,
+    "securityAuditPassed": true,
+    "productionGatePassed": true,
+    "customerDataAllowed": true
+  },
+  "blockedIfAnyGateFails": [
+    "reviewAccounts",
+    "draftLetters",
+    "rawDocuments"
+  ],
+  "notes": [
+    "Demo mode is off by default.",
+    "Do not return raw credit report text to customer UI.",
+    "Do not return unmasked account numbers.",
+    "Letters must remain draft-only until customer and admin approval."
+  ]
+}

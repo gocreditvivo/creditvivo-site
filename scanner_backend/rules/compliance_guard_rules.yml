@@ -1,0 +1,25 @@
+{
+  "version": "2026-07-v1",
+  "blocked_phrases": [
+    "violation proven",
+    "must delete",
+    "guaranteed removal",
+    "fix credit fast",
+    "lawsuit",
+    "automatic dispute"
+  ],
+  "preferred_phrases": [
+    "possible report error",
+    "possible inconsistency",
+    "review recommended",
+    "verify",
+    "correct, update, or remove if unverifiable",
+    "results vary"
+  ],
+  "required_disclaimers": [
+    "Scanner output is draft review data only.",
+    "Customer approval and admin review are required before any dispute, validation letter, mailing, complaint, or escalation.",
+    "Credit Vivo is not a law firm and does not provide legal advice.",
+    "Accurate, current, and verifiable information may remain."
+  ]
+}

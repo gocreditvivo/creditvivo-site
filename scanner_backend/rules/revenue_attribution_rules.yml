@@ -1,0 +1,21 @@
+version: "2026-07-v1"
+required_fields:
+  - customer_id
+  - source
+  - campaign
+  - amount
+optional_fields:
+  - partner_id
+  - attributed_at
+source_types:
+  - organic
+  - paid_search
+  - paid_social
+  - referral_partner
+  - direct
+  - email
+  - sms
+  - event
+guardrails:
+  - "Revenue attribution is internal planning data."
+  - "Do not imply guaranteed customer outcomes from attribution records."

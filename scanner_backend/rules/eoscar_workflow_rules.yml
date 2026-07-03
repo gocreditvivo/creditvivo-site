@@ -1,0 +1,18 @@
+{
+  "version": "2026-07-v1",
+  "rules": [
+    "No direct e-OSCAR integration is included.",
+    "Scanner may track dispute response categories and response gaps.",
+    "If a response says verified but does not address the specific issue, recommend draft Method of Verification / reinvestigation review.",
+    "Use e-OSCAR awareness only to package field-level facts clearly for admin/customer review."
+  ],
+  "safe_letter_recommendations": [
+    "bureau_review_dispute_letter_draft",
+    "furnisher_direct_dispute_draft",
+    "debt_validation_draft",
+    "method_of_verification_draft",
+    "reinvestigation_draft",
+    "documented_follow_up_packet",
+    "complaint_preparation_packet"
+  ]
+}

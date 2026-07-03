@@ -1,0 +1,7 @@
+{
+  "demo_mode_env_false_present": true,
+  "production_gates_required": true,
+  "no_auto_send_language": true,
+  "customer_data_blocking_present": true,
+  "required_gate_fields_present": true
+}

@@ -1,0 +1,20 @@
+version: "2026-07-v1"
+channels:
+  email:
+    max_drafts_per_week: 3
+    approval_required: true
+  sms:
+    max_drafts_per_week: 2
+    approval_required: true
+  social:
+    max_drafts_per_week: 5
+    approval_required: true
+  partner:
+    max_drafts_per_week: 5
+    approval_required: true
+  website:
+    max_drafts_per_week: 10
+    approval_required: true
+timing_guardrails:
+  - "No campaign is sent automatically."
+  - "Founder approval and compliance review are required for customer-facing campaigns."

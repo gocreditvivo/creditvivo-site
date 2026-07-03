@@ -1,0 +1,72 @@
+{
+  "version": "credit-vivo-best-flow-architecture-2026.07.03-v1",
+  "customer_flow": [
+    "Lead",
+    "Sign Up",
+    "Goal Selection",
+    "Upload Reports",
+    "AI Review",
+    "Findings Summary",
+    "Review Accounts",
+    "Approve Drafts",
+    "Admin QA",
+    "Mail/Submit",
+    "Track Progress",
+    "Response Review",
+    "Next Round",
+    "Attorney Support Review if Eligible"
+  ],
+  "customer_routes": [
+    "/",
+    "/signup",
+    "/login",
+    "/member",
+    "/member/upload",
+    "/member/findings",
+    "/member/accounts",
+    "/member/disputes",
+    "/member/progress",
+    "/member/documents",
+    "/member/messages",
+    "/member/profile",
+    "/member/settings",
+    "/member/security",
+    "/member/billing",
+    "/member/support"
+  ],
+  "admin_routes": [
+    "/admin",
+    "/admin/contacts",
+    "/admin/customers",
+    "/admin/scans",
+    "/admin/workbooks",
+    "/admin/evidence",
+    "/admin/qa",
+    "/admin/letters",
+    "/admin/approvals",
+    "/admin/mail",
+    "/admin/responses",
+    "/admin/complaints",
+    "/admin/attorney-review",
+    "/admin/vendors",
+    "/admin/audit-logs"
+  ],
+  "production_gates": [
+    "health_check_passed",
+    "ground_truth_passed",
+    "qa_verification_passed",
+    "security_audit_passed",
+    "production_gate_passed"
+  ],
+  "differentiators": [
+    "v9 forensic workbook",
+    "v17 safety gates",
+    "raw evidence per field",
+    "ground-truth validation",
+    "strict positive/negative classifier",
+    "customer/admin approval gates",
+    "returned-response parser",
+    "collector/license review",
+    "attorney eligibility workflow"
+  ]
+}

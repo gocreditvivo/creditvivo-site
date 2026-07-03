@@ -1,0 +1,23 @@
+{
+  "route": "/admin/production-certification",
+  "overall_default_status": "blocked",
+  "design_goal": "Founder Command Center for non-technical admin",
+  "main_gates": [
+    "Scanner Accuracy",
+    "Ground Truth",
+    "Compliance",
+    "Security",
+    "Operations"
+  ],
+  "plain_language_rules": {
+    "Ground truth validation": "Workbook matches raw reports",
+    "Parser integrity": "Scanner engine is working",
+    "Positive classifier": "Good accounts stay protected",
+    "Negative classifier": "Score-impacting accounts detected",
+    "Production gate": "Launch safety lock",
+    "Raw evidence index": "Proof behind each finding",
+    "QA verification": "Final accuracy check",
+    "Security audit": "Customer data protection check",
+    "Approval workflow": "Nothing goes out without review"
+  }
+}

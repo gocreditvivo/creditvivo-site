@@ -1,0 +1,27 @@
+version: "2026-07-v1"
+module: "CV Market/Growth AI"
+purpose: "Founder-side marketing and revenue command center for Credit Vivo."
+capabilities:
+  - Lead Intelligence
+  - Campaign Builder
+  - Market Research
+  - Competitor Learning
+  - Partner Referral Tracking
+  - Consent Logs
+  - Founder Approval Queue
+  - Revenue Attribution
+  - Compliance Guard
+  - Founder Dashboard Summary
+lead_categories:
+  - Rent Ready
+  - Mortgage Ready
+  - Auto Loan Ready
+  - Credit Card Ready
+  - Business Funding Ready
+  - General Credit Review
+  - Attorney Support Review
+operating_rules:
+  - "AI recommends."
+  - "Founder approves."
+  - "Compliance is logged."
+  - "Scanner and growth output remain draft-only until approved."

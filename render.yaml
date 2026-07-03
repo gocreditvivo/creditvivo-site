@@ -1,0 +1,89 @@
+services:
+  - type: web
+    name: creditvivo-scanner-api
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r scanner_backend/requirements.txt
+    startCommand: cd scanner_backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    disk:
+      name: creditvivo-scanner-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: CREDIT_VIVO_ALLOWED_ORIGINS
+        value: https://www.creditvivo.com,https://creditvivo.com
+      - key: SCANNER_ENVIRONMENT
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: SCANNER_MAX_FILES
+        value: 3
+      - key: SCANNER_MAX_FILE_MB
+        value: 25
+      - key: SCANNER_RETAIN_UPLOADS
+        value: false
+      - key: SCANNER_WRITE_RAW_TEXT
+        value: false
+      - key: SCANNER_STORAGE_DIR
+        value: /var/data/creditvivo-scanner
+      - key: SCANNER_USE_SYNTHETIC_REPORTS
+        value: false
+      - key: SCANNER_ALLOW_REAL_CUSTOMER_DATA
+        value: true
+      - key: ENABLE_AUTO_SEND
+        value: false
+      - key: ENABLE_CUSTOMER_FINAL_RESULT_WITHOUT_QA
+        value: false
+      - key: ENABLE_LETTERS_WITHOUT_VERIFIED_ISSUE
+        value: false
+      - key: ENABLE_COMPLAINTS_WITHOUT_APPROVAL
+        value: false
+      - key: ENABLE_ATTORNEY_ESCALATION_WITHOUT_APPROVAL
+        value: false
+      - key: ENABLE_EXTERNAL_CALLS
+        value: false
+      - key: PAYMENTS_MODE
+        value: disabled
+      - key: STRIPE_MODE
+        value: disabled
+      - key: LIVE_CREDITVIVO_HOME_URL
+        value: https://www.creditvivo.com/
+      - key: LIVE_CREDITVIVO_SCAN_URL
+        value: https://www.creditvivo.com/scan
+      - key: LIVE_CREDITVIVO_LOGIN_URL
+        value: https://www.creditvivo.com/dashboard
+      - key: EMAIL_PROVIDER
+        value: disabled
+      - key: EMAIL_FROM
+        value: no-reply@creditvivo.com
+      - key: SUPPORT_EMAIL
+        value: support@creditvivo.com
+      - key: PRIVACY_EMAIL
+        value: privacy@creditvivo.com
+      - key: SECURITY_EMAIL
+        value: security@creditvivo.com
+      - key: SOCIAL_EMAIL
+        value: social@creditvivo.com
+      - key: ENABLE_EMAIL_SENDING
+        value: false
+      - key: ENABLE_MARKETING_EMAILS
+        value: false
+      - key: ENABLE_DISPUTE_EMAIL_AUTO_SEND
+        value: false
+      - key: ADMIN_SETUP_TOKEN
+        sync: false
+      - key: CREDITVIVO_ADMIN_USERNAME
+        sync: false
+      - key: CREDITVIVO_ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
+      - key: CREDITVIVO_STORAGE_ENCRYPTION_KEY
+        sync: false
+      - key: CREDITVIVO_AUTH_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_WEBHOOK_SECRET
+        sync: false

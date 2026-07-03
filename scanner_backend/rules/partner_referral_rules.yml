@@ -1,0 +1,23 @@
+version: "2026-07-v1"
+partner_types:
+  - apartment locators
+  - realtors
+  - mortgage brokers
+  - auto dealers
+  - insurance agents
+  - tax preparers
+  - payroll companies
+  - small business lenders
+  - community groups
+allowed_statuses:
+  - new
+  - contacted
+  - active
+  - paused
+  - converted
+  - disqualified
+required_fields:
+  - partner_id
+  - lead_id
+  - status
+tracking_note: "Referral tracking records source and status only. Outreach still requires founder approval."

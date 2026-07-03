@@ -1,0 +1,24 @@
+version: "2026-07-v1"
+statuses:
+  - draft_ready
+  - founder_review_pending
+  - approved
+  - rejected
+  - needs_revision
+  - scheduled
+  - sent
+  - cancelled
+risk_levels:
+  - low
+  - medium
+  - high
+  - compliance_review
+approval_required_item_types:
+  - public_post
+  - customer_message
+  - partner_outreach
+  - ad_campaign
+  - email_campaign
+  - sms_campaign
+  - attorney_support_message
+founder_review_note: "Founder approval is required before public posting, customer outreach, partner outreach, ads, email, SMS, letters, complaints, or escalation."

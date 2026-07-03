@@ -1,0 +1,23 @@
+{
+  "environment": "staging",
+  "real_customer_data_allowed": false,
+  "users": [
+    {
+      "email": "founder-test@creditvivo.com",
+      "role": "founder_admin"
+    },
+    {
+      "email": "admin-test@creditvivo.com",
+      "role": "scanner_admin"
+    },
+    {
+      "email": "member-test@creditvivo.com",
+      "role": "customer"
+    },
+    {
+      "email": "support-test@creditvivo.com",
+      "role": "support_admin"
+    }
+  ]
+}
+

@@ -1,0 +1,19 @@
+{
+  "version": "2026-07-v1",
+  "issue_rules": [
+    {"id": "account_identifier_mismatch", "label": "Account identifier mismatch", "fields": ["Account Number", "Account/Furnisher Name"], "severity": "medium"},
+    {"id": "account_type_classification_mismatch", "label": "Account type/classification mismatch", "fields": ["Account Type", "Creditor Classification", "Portfolio/Loan Type"], "severity": "medium"},
+    {"id": "status_pay_status_inconsistency", "label": "Status/pay-status inconsistency", "fields": ["Status/Pay Status"], "severity": "high"},
+    {"id": "date_field_inconsistency", "label": "Date-field inconsistency", "fields": ["Date Opened/Assigned", "Date Reported/Updated", "Date Closed"], "severity": "medium"},
+    {"id": "missing_incomplete_dofd", "label": "Missing/incomplete DOFD across bureaus", "fields": ["Date of First Delinquency"], "severity": "high"},
+    {"id": "major_delinquency_date_missing", "label": "Major delinquency date missing/inconsistent", "fields": ["Date Major Delinquency First Reported"], "severity": "medium"},
+    {"id": "balance_amount_reporting_issue", "label": "Balance/amount reporting issue", "fields": ["Current Balance", "Past Due Amount", "Original Balance/Amount", "Charge-Off Amount"], "severity": "high"},
+    {"id": "payment_history_inconsistency", "label": "Payment history inconsistency", "fields": ["Payment Rating/History Summary"], "severity": "medium"},
+    {"id": "remark_narrative_code_inconsistency", "label": "Remark/narrative-code inconsistency", "fields": ["Remarks/Narrative Codes"], "severity": "medium"},
+    {"id": "removal_obsolescence_mismatch", "label": "Removal/obsolescence date mismatch or missing", "fields": ["Estimated Removal/On Record Until", "Date of First Delinquency"], "severity": "medium"},
+    {"id": "original_creditor_missing", "label": "Original creditor missing or inconsistent", "fields": ["Original Creditor"], "severity": "medium"},
+    {"id": "furnisher_contact_differs", "label": "Furnisher contact data differs", "fields": ["Address/Phone"], "severity": "low"},
+    {"id": "duplicate_overlap_review", "label": "Duplicate/overlap review", "fields": ["Account/Furnisher Name", "Original Creditor", "Current Balance"], "severity": "high"},
+    {"id": "single_bureau_review", "label": "Single-bureau review", "fields": ["Account/Furnisher Name"], "severity": "low"}
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "credit-vivo-scanner",
+  "version": "18.1.7",
+  "private": true,
+  "description": "Credit Vivo scanner backend and frontend portal preview.",
+  "scripts": {
+    "build": "next build",
+    "build:staging": "node scripts/build-staging.mjs",
+    "build:backend": "node scripts/build.mjs",
+    "build:all": "next build && node scripts/build.mjs",
+    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "dev:staging": "node scripts/dev-staging.mjs",
+    "dev:backend": "node scripts/dev.mjs",
+    "test": "node scripts/build.mjs",
+    "test:uat": "node scripts/uat-smoke.mjs"
+  },
+  "dependencies": {
+    "next": "^15.5.20",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.16"
+  }
+}

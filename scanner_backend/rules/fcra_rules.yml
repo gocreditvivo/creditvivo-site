@@ -1,0 +1,10 @@
+{
+  "version": "2026-07-v1",
+  "rules": [
+    {"id": "accuracy_completeness", "label": "Accuracy and completeness review", "reference": "FCRA accuracy and completeness duties", "safe_output": "possible report error"},
+    {"id": "bureau_reinvestigation", "label": "Bureau reinvestigation review", "reference": "FCRA bureau reinvestigation duties", "safe_output": "review recommended"},
+    {"id": "direct_furnisher_dispute", "label": "Direct furnisher dispute review", "reference": "FCRA / Regulation V direct dispute workflow", "safe_output": "verify and correct, update, or remove if unverifiable"},
+    {"id": "dofd_obsolescence", "label": "DOFD and obsolete information review", "reference": "FCRA adverse-item timing review", "safe_output": "possible inconsistency"},
+    {"id": "disputed_account_notation", "label": "Disputed-account notation review", "reference": "FCRA disputed information handling", "safe_output": "review recommended"}
+  ]
+}

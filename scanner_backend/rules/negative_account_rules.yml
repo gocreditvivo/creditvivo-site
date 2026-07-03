@@ -1,0 +1,157 @@
+{
+  "version": "2026-07-v1",
+  "scope": "consumer_credit_reports_only",
+  "categories": [
+    {
+      "id": "collection",
+      "label": "Collection",
+      "keywords": ["collection", "collection account", "placed for collection", "collection agency"],
+      "metro2_status_codes": ["93", "62"],
+      "priority": "high",
+      "review_reason": "Collection reporting should be reviewed for original creditor, balance, ownership, dates, and verification support."
+    },
+    {
+      "id": "debt_buyer",
+      "label": "Debt buyer",
+      "keywords": ["debt buyer", "factoring company", "purchased by another lender", "assigned", "sold to"],
+      "metro2_status_codes": ["93"],
+      "priority": "high",
+      "review_reason": "Debt-buyer reporting should be reviewed for ownership, assignment, original creditor, and amount support."
+    },
+    {
+      "id": "charge_off",
+      "label": "Charge-off",
+      "keywords": ["charge off", "charge-off", "charged off", "profit and loss", "written off", "loss"],
+      "metro2_status_codes": ["97", "64"],
+      "priority": "high",
+      "review_reason": "Charge-off reporting should be reviewed for balance, status, dates, sold/transferred language, and DOFD support."
+    },
+    {
+      "id": "late_30",
+      "label": "30 day late",
+      "keywords": ["30 days past due", "30 day late", "30 days late"],
+      "metro2_status_codes": ["71"],
+      "priority": "medium",
+      "review_reason": "Late-payment reporting should be reviewed against payment history and supporting records."
+    },
+    {
+      "id": "late_60",
+      "label": "60 day late",
+      "keywords": ["60 days past due", "60 day late", "60 days late"],
+      "metro2_status_codes": ["78"],
+      "priority": "medium",
+      "review_reason": "Late-payment reporting should be reviewed against payment history and supporting records."
+    },
+    {
+      "id": "late_90",
+      "label": "90 day late",
+      "keywords": ["90 days past due", "90 day late", "90 days late"],
+      "metro2_status_codes": ["80"],
+      "priority": "high",
+      "review_reason": "Serious delinquency history should be reviewed for date, status, and payment-history consistency."
+    },
+    {
+      "id": "late_120",
+      "label": "120 day late",
+      "keywords": ["120 days past due", "120 day late", "120 days late"],
+      "metro2_status_codes": ["82"],
+      "priority": "high",
+      "review_reason": "Serious delinquency history should be reviewed for date, status, and payment-history consistency."
+    },
+    {
+      "id": "late_150",
+      "label": "150 day late",
+      "keywords": ["150 days past due", "150 day late", "150 days late"],
+      "metro2_status_codes": ["83"],
+      "priority": "high",
+      "review_reason": "Serious delinquency history should be reviewed for date, status, and payment-history consistency."
+    },
+    {
+      "id": "late_180",
+      "label": "180 day late",
+      "keywords": ["180 days past due", "180 day late", "180 days late"],
+      "metro2_status_codes": ["84"],
+      "priority": "high",
+      "review_reason": "Serious delinquency history should be reviewed for date, status, and payment-history consistency."
+    },
+    {
+      "id": "past_due",
+      "label": "Past due",
+      "keywords": ["past due", "amount past due", "delinquent"],
+      "metro2_status_codes": ["71", "78", "80", "82", "83", "84"],
+      "priority": "medium",
+      "review_reason": "Past-due reporting should be compared against balance, payment status, and payment history."
+    },
+    {
+      "id": "repossession",
+      "label": "Repossession",
+      "keywords": ["repossession", "reposessed", "repossessed"],
+      "metro2_status_codes": ["96"],
+      "priority": "high",
+      "review_reason": "Repossession reporting should be reviewed for status, balance, dates, and deficiency-balance support."
+    },
+    {
+      "id": "voluntary_surrender",
+      "label": "Voluntary surrender",
+      "keywords": ["voluntary surrender", "voluntarily surrendered"],
+      "metro2_status_codes": ["95"],
+      "priority": "high",
+      "review_reason": "Voluntary-surrender reporting should be reviewed for status, balance, dates, and supporting records."
+    },
+    {
+      "id": "foreclosure",
+      "label": "Foreclosure",
+      "keywords": ["foreclosure", "foreclosure completed"],
+      "metro2_status_codes": ["94"],
+      "priority": "high",
+      "review_reason": "Foreclosure reporting should be reviewed for status, dates, balance, and public-record consistency."
+    },
+    {
+      "id": "bankruptcy",
+      "label": "Bankruptcy",
+      "keywords": ["bankruptcy", "included in bankruptcy", "chapter 7", "chapter 13"],
+      "metro2_status_codes": [],
+      "priority": "high",
+      "review_reason": "Bankruptcy-related reporting should be reviewed for discharge status, dates, and account-level consistency."
+    },
+    {
+      "id": "serious_closed_delinquency",
+      "label": "Serious closed delinquency history",
+      "keywords": ["closed", "charged off", "transferred", "sold", "seriously past due"],
+      "metro2_status_codes": ["80", "82", "83", "84", "97"],
+      "priority": "medium",
+      "review_reason": "Closed negative accounts should be reviewed for current status, balance, and delinquency timeline consistency."
+    },
+    {
+      "id": "duplicate_overlap",
+      "label": "Duplicate / overlapping debt review",
+      "keywords": ["duplicate", "same debt", "transferred", "sold", "collection"],
+      "metro2_status_codes": [],
+      "priority": "high",
+      "review_reason": "Potential duplicate or overlapping debt should be reviewed against original creditor, account number, balance, and date history."
+    },
+    {
+      "id": "outdated_adverse",
+      "label": "Outdated adverse information review",
+      "keywords": ["on record until", "estimated removal", "scheduled to continue", "date of first delinquency"],
+      "metro2_status_codes": [],
+      "priority": "medium",
+      "review_reason": "Adverse items should be reviewed for DOFD and obsolescence timing."
+    }
+  ],
+  "metro2_status_codes": {
+    "71": "30-59 days past due",
+    "78": "60-89 days past due",
+    "80": "90-119 days past due",
+    "82": "120-149 days past due",
+    "83": "150-179 days past due",
+    "84": "180+ days past due",
+    "93": "Collection",
+    "94": "Foreclosure completed",
+    "95": "Voluntary surrender",
+    "96": "Repossession",
+    "97": "Unpaid balance reported as loss / charge-off",
+    "62": "Paid collection",
+    "64": "Paid charge-off"
+  }
+}
