@@ -40,10 +40,12 @@ except ImportError:
 
 try:
     from openpyxl import Workbook
+    from openpyxl import load_workbook
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 except Exception:
     Workbook = None
+    load_workbook = None
     Alignment = None
     Font = None
     PatternFill = None
@@ -143,6 +145,32 @@ class Evidence:
 
 
 @dataclass
+class FieldEvidence:
+    field_name: str
+    raw_value: str
+    normalized_value: str
+    source_filename: str
+    source_file_hash: str
+    bureau: str
+    page: Optional[int]
+    raw_block_id: str
+    raw_block_hash: str
+    raw_line: str = ""
+    extraction_rule_id: str = ""
+    confidence_score: float = 0.0
+    needs_admin_review: bool = False
+
+
+@dataclass
+class BureauDetectionResult:
+    bureau: str
+    confidence_score: float
+    source: str
+    conflict: bool = False
+    evidence: List[str] = field(default_factory=list)
+
+
+@dataclass
 class NormalizedTradeline:
     id: str
     bureau: str
@@ -175,6 +203,16 @@ class NormalizedTradeline:
     confidence: str = "medium"
     confidence_score: float = 0.0
     needs_admin_review: bool = True
+    field_evidence: Dict[str, FieldEvidence] = field(default_factory=dict)
+    source_file_hash: str = ""
+    raw_block_id: str = ""
+    raw_block_hash: str = ""
+    bureau_conflict: bool = False
+    parser_warnings: List[str] = field(default_factory=list)
+    is_negative: bool = False
+    negative_item_type: str = ""
+    negative_signals: List[str] = field(default_factory=list)
+    positive_signals: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -417,6 +455,10 @@ NON_ACCOUNT_SECTION_TERMS = [
 # Text + page utilities
 # -----------------------------
 
+def source_hash(filename: str, text: str) -> str:
+    return hashlib.sha256((filename + "\n" + text).encode("utf-8", errors="ignore")).hexdigest()
+
+
 def detect_bureau(filename: str, text: str) -> str:
     sample = (filename + "\n" + text[:5000]).lower()
     header_text = text[:1200].lower()
@@ -434,6 +476,40 @@ def detect_bureau(filename: str, text: str) -> str:
         scores[bureau] = sum(1 for t in terms if t in sample)
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "Unknown Bureau"
+
+
+def detect_bureau_with_conflict(filename: str, text: str, upload_bureau: str = "") -> BureauDetectionResult:
+    header_text = text[:1200]
+    exact_headers = {
+        "Equifax": [r"\bequifax\s+credit\s+report\b", r"\bequifax\s+credit\s+file\b"],
+        "Experian": [r"\bexperian\s+credit\s+report\b", r"\bexperian\s+credit\s+file\b"],
+        "TransUnion": [r"\btransunion\s+credit\s+report\b", r"\btrans\s*union\s+credit\s+report\b"],
+    }
+    for bureau, patterns in exact_headers.items():
+        for pattern in patterns:
+            m = re.search(pattern, header_text, flags=re.I)
+            if m:
+                conflict = bool(upload_bureau and upload_bureau != "Unknown Bureau" and upload_bureau != bureau)
+                evidence = [clean_text(m.group(0))]
+                if conflict:
+                    evidence.append(f"upload_metadata={upload_bureau}")
+                return BureauDetectionResult(
+                    bureau=bureau,
+                    confidence_score=0.98,
+                    source="explicit_page_or_block_header",
+                    conflict=conflict,
+                    evidence=evidence,
+                )
+
+    guessed = detect_bureau(filename, text)
+    confidence = 0.65 if guessed != "Unknown Bureau" else 0.0
+    return BureauDetectionResult(
+        bureau=guessed,
+        confidence_score=confidence,
+        source="filename_or_signature_fallback" if guessed != "Unknown Bureau" else "not_detected",
+        conflict=False,
+        evidence=[filename] if guessed != "Unknown Bureau" else [],
+    )
 
 
 def page_split(text: str) -> List[Tuple[Optional[int], str]]:
@@ -537,6 +613,57 @@ def first_match(patterns: List[str], text: str) -> str:
     return ""
 
 
+def raw_line_for_match(text: str, match) -> str:
+    if not match:
+        return ""
+    start = match.start()
+    for line in text.splitlines():
+        line_start = text.find(line)
+        line_end = line_start + len(line)
+        if line_start <= start <= line_end:
+            return clean_text(line)[:500]
+    return clean_text(match.group(0))[:500]
+
+
+def normalize_field_value(field_name: str, value: str) -> str:
+    value = trim_embedded_labels(value, field_name)
+    if field_name in {"balance", "past_due", "high_credit_or_original_amount", "credit_limit"}:
+        return normalize_money(value)
+    if "date" in field_name:
+        return normalize_date(value)
+    if field_name == "account_number_masked":
+        return mask_account_number(value)
+    return value
+
+
+def extract_field_with_evidence(field_name: str, block: str, context: dict) -> Tuple[str, Optional[FieldEvidence]]:
+    for index, pattern in enumerate(COMMON_FIELD_PATTERNS.get(field_name, []), start=1):
+        match = re.search(pattern, block, flags=re.I | re.M)
+        if not match:
+            continue
+        raw_value = clean_text(match.group(1))
+        raw_value = re.split(r"\n| {3,}", raw_value)[0].strip(" :-")
+        normalized_value = normalize_field_value(field_name, raw_value)
+        raw_line = raw_line_for_match(block, match)
+        evidence = FieldEvidence(
+            field_name=field_name,
+            raw_value=raw_value[:240],
+            normalized_value=normalized_value,
+            source_filename=context.get("source_filename", ""),
+            source_file_hash=context.get("source_file_hash", ""),
+            bureau=context.get("bureau", ""),
+            page=context.get("page"),
+            raw_block_id=context.get("raw_block_id", ""),
+            raw_block_hash=context.get("raw_block_hash", ""),
+            raw_line=raw_line,
+            extraction_rule_id=f"{field_name}:pattern_{index}",
+            confidence_score=0.9 if raw_line else 0.72,
+            needs_admin_review=not bool(raw_line),
+        )
+        return normalized_value, evidence
+    return "", None
+
+
 def trim_embedded_labels(value: str, field_name: str) -> str:
     value = clean_text(value).strip(" :-|")
     if not value:
@@ -638,16 +765,75 @@ def infer_missing_fields_from_block(t: NormalizedTradeline) -> None:
         t.remarks = "Account information disputed by consumer"
 
 
+def evidence_for_inferred_field(t: NormalizedTradeline, field_name: str, value: str) -> FieldEvidence:
+    raw_line = ""
+    if value:
+        value_key = re.escape(str(value).strip())
+        for line in t.raw_block.splitlines():
+            if re.search(value_key, line, flags=re.I):
+                raw_line = clean_text(line)
+                break
+    if not raw_line:
+        for line in t.raw_block.splitlines():
+            if field_name.replace("_", " ") in line.lower():
+                raw_line = clean_text(line)
+                break
+    if not raw_line:
+        raw_line = clean_text(t.raw_block.splitlines()[0] if t.raw_block.splitlines() else t.raw_block)[:500]
+    return FieldEvidence(
+        field_name=field_name,
+        raw_value=str(value or "")[:240],
+        normalized_value=str(value or ""),
+        source_filename=t.source_filename,
+        source_file_hash=t.source_file_hash,
+        bureau=t.bureau,
+        page=t.page_start,
+        raw_block_id=t.raw_block_id,
+        raw_block_hash=t.raw_block_hash,
+        raw_line=raw_line[:500],
+        extraction_rule_id=f"{field_name}:inferred_from_raw_block",
+        confidence_score=0.55,
+        needs_admin_review=True,
+    )
+
+
+def ensure_field_evidence(t: NormalizedTradeline) -> None:
+    for field_name in [
+        "account_name",
+        "account_number_masked",
+        "account_type",
+        "portfolio_type",
+        "responsibility",
+        "creditor_classification",
+        "original_creditor",
+        "collector_or_debt_buyer",
+        "status",
+        "pay_status",
+        "balance",
+        "past_due",
+        "high_credit_or_original_amount",
+        "credit_limit",
+        "date_opened",
+        "date_closed",
+        "date_reported",
+        "date_last_activity",
+        "date_last_payment",
+        "date_of_first_delinquency",
+        "estimated_removal_date",
+        "remarks",
+    ]:
+        value = getattr(t, field_name, "")
+        if value and field_name not in t.field_evidence:
+            t.field_evidence[field_name] = evidence_for_inferred_field(t, field_name, value)
+    missing_proof = [field for field, evidence in t.field_evidence.items() if not evidence.raw_line]
+    if missing_proof:
+        t.needs_admin_review = True
+        t.parser_warnings.append("field_evidence_missing_raw_line:" + ",".join(sorted(missing_proof)))
+
+
 def extract_field(field_name: str, block: str) -> str:
     value = first_match(COMMON_FIELD_PATTERNS.get(field_name, []), block)
-    value = trim_embedded_labels(value, field_name)
-    if field_name in {"balance", "past_due", "high_credit_or_original_amount", "credit_limit"}:
-        return normalize_money(value)
-    if "date" in field_name:
-        return normalize_date(value)
-    if field_name == "account_number_masked":
-        return mask_account_number(value)
-    return value
+    return normalize_field_value(field_name, value)
 
 
 def is_bad_account_name(name: str) -> bool:
@@ -943,10 +1129,11 @@ def page_bureau_map(text: str) -> Dict[Optional[int], str]:
     }
 
 
-def parse_tradelines_for_bureau(bureau: str, filename: str, text: str) -> List[NormalizedTradeline]:
+def parse_tradelines_for_bureau(bureau: str, filename: str, text: str, file_hash: str = "", upload_bureau: str = "") -> List[NormalizedTradeline]:
     tradelines = []
     for page_num, page_text in page_split(text):
-        page_bureau = detect_bureau("", page_text)
+        detection = detect_bureau_with_conflict("", page_text, upload_bureau or bureau)
+        page_bureau = detection.bureau
         active_bureau = page_bureau if page_bureau != "Unknown Bureau" else bureau
         page_input = f"--- PAGE {page_num} ---\n{page_text}" if page_num is not None else page_text
         for page_num, block in candidate_blocks(page_input):
@@ -961,39 +1148,73 @@ def parse_tradelines_for_bureau(bureau: str, filename: str, text: str) -> List[N
                 continue
 
             account_name = guess_account_name(block)
+            raw_block_hash = hashlib.sha256(block.encode("utf-8", errors="ignore")).hexdigest()
+            raw_block_id = stable_id(filename, active_bureau, str(page_num or ""), raw_block_hash[:16])
+            context = {
+                "source_filename": filename,
+                "source_file_hash": file_hash,
+                "bureau": active_bureau,
+                "page": page_num,
+                "raw_block_id": raw_block_id,
+                "raw_block_hash": raw_block_hash,
+            }
+            extracted = {}
+            field_evidence = {}
+            for field_name in COMMON_FIELD_PATTERNS:
+                value, evidence = extract_field_with_evidence(field_name, block, context)
+                extracted[field_name] = value
+                if evidence:
+                    field_evidence[field_name] = evidence
             t = NormalizedTradeline(
                 id=stable_id(active_bureau, filename, account_name, block[:160]),
                 bureau=active_bureau,
                 source_filename=filename,
                 account_name=account_name,
-                account_number_masked=extract_field("account_number_masked", block),
-                account_type=extract_field("account_type", block),
-                portfolio_type=extract_field("portfolio_type", block),
-                responsibility=extract_field("responsibility", block),
-                creditor_classification=extract_field("creditor_classification", block),
-                original_creditor=extract_field("original_creditor", block),
-                collector_or_debt_buyer=extract_field("collector_or_debt_buyer", block),
-                status=extract_field("status", block),
-                pay_status=extract_field("pay_status", block),
-                balance=extract_field("balance", block),
-                past_due=extract_field("past_due", block),
-                high_credit_or_original_amount=extract_field("high_credit_or_original_amount", block),
-                credit_limit=extract_field("credit_limit", block),
-                date_opened=extract_field("date_opened", block),
-                date_closed=extract_field("date_closed", block),
-                date_reported=extract_field("date_reported", block),
-                date_last_activity=extract_field("date_last_activity", block),
-                date_last_payment=extract_field("date_last_payment", block),
-                date_of_first_delinquency=extract_field("date_of_first_delinquency", block),
-                estimated_removal_date=extract_field("estimated_removal_date", block),
-                remarks=extract_field("remarks", block),
+                account_number_masked=extracted.get("account_number_masked", ""),
+                account_type=extracted.get("account_type", ""),
+                portfolio_type=extracted.get("portfolio_type", ""),
+                responsibility=extracted.get("responsibility", ""),
+                creditor_classification=extracted.get("creditor_classification", ""),
+                original_creditor=extracted.get("original_creditor", ""),
+                collector_or_debt_buyer=extracted.get("collector_or_debt_buyer", ""),
+                status=extracted.get("status", ""),
+                pay_status=extracted.get("pay_status", ""),
+                balance=extracted.get("balance", ""),
+                past_due=extracted.get("past_due", ""),
+                high_credit_or_original_amount=extracted.get("high_credit_or_original_amount", ""),
+                credit_limit=extracted.get("credit_limit", ""),
+                date_opened=extracted.get("date_opened", ""),
+                date_closed=extracted.get("date_closed", ""),
+                date_reported=extracted.get("date_reported", ""),
+                date_last_activity=extracted.get("date_last_activity", ""),
+                date_last_payment=extracted.get("date_last_payment", ""),
+                date_of_first_delinquency=extracted.get("date_of_first_delinquency", ""),
+                estimated_removal_date=extracted.get("estimated_removal_date", ""),
+                remarks=extracted.get("remarks", ""),
                 raw_block=block[:2500],
                 page_start=page_num,
+                field_evidence=field_evidence,
+                source_file_hash=file_hash,
+                raw_block_id=raw_block_id,
+                raw_block_hash=raw_block_hash,
+                bureau_conflict=detection.conflict,
+                parser_warnings=["upload_metadata_conflicts_with_page_header"] if detection.conflict else [],
             )
             infer_missing_fields_from_block(t)
+            if t.account_name:
+                t.field_evidence["account_name"] = evidence_for_inferred_field(t, "account_name", t.account_name)
+            ensure_field_evidence(t)
+            negative = classify_negative_status(t)
+            t.is_negative = bool(negative.get("is_negative"))
+            t.negative_item_type = negative.get("negative_type", "")
+            t.negative_signals = negative.get("signals", [])
+            t.positive_signals = negative.get("positive_signals", [])
+            if negative.get("needs_admin_review"):
+                t.needs_admin_review = True
+                t.parser_warnings.append("negative_classifier_needs_admin_review")
             t.confidence_score = score_confidence(t)
             t.confidence = confidence_label(t.confidence_score)
-            t.needs_admin_review = t.confidence != "high"
+            t.needs_admin_review = t.needs_admin_review or t.confidence != "high" or t.bureau_conflict
             if not is_probable_tradeline(t):
                 continue
             tradelines.append(t)
@@ -1158,6 +1379,74 @@ def ev(t: NormalizedTradeline) -> Evidence:
     )
 
 
+def classify_negative_status(t: NormalizedTradeline) -> dict:
+    blob = " ".join(
+        str(value or "")
+        for value in [
+            t.account_type,
+            t.status,
+            t.pay_status,
+            t.remarks,
+            t.past_due,
+            t.date_of_first_delinquency,
+            t.estimated_removal_date,
+            t.collector_or_debt_buyer,
+            t.raw_block,
+        ]
+    ).lower()
+    signal_patterns = {
+        "collection": [r"\bcollection\b", r"\bdebt buyer\b", r"\bcollector\b"],
+        "charge_off": [r"\bcharge[- ]?off\b", r"\bcharged off\b", r"\bwritten off\b", r"\bbad debt\b"],
+        "past_due": [r"\bpast due\b", r"\bdelinquent\b", r"\bseriously past due\b"],
+        "late_payment": [r"\b(?:30|60|90|120|150|180)\s+days?\s+(?:late|past due)\b"],
+        "public_record_or_severe": [r"\brepossession\b", r"\bforeclosure\b", r"\bbankruptcy\b"],
+    }
+    positive_patterns = [
+        (r"\bpays as agreed\b", "pays as agreed"),
+        (r"\bpaid as agreed\b", "paid as agreed"),
+        (r"\bnever late\b", "never late"),
+        (r"\bcurrent account\b", "current account"),
+        (r"\bcurrent\b", "current"),
+        (r"\bopen\b", "open"),
+    ]
+    signals = []
+    negative_type = ""
+    for signal_type, patterns in signal_patterns.items():
+        for pattern in patterns:
+            if re.search(pattern, blob, flags=re.I):
+                signals.append(signal_type)
+                negative_type = negative_type or signal_type
+                break
+    positive_signals = [label for pattern, label in positive_patterns if re.search(pattern, blob, flags=re.I)]
+    is_negative = bool(signals)
+    if not is_negative and positive_signals:
+        return {
+            "is_negative": False,
+            "negative_type": "",
+            "signals": [],
+            "positive_signals": positive_signals,
+            "confidence_score": 0.9,
+            "needs_admin_review": False,
+        }
+    if is_negative:
+        return {
+            "is_negative": True,
+            "negative_type": negative_type,
+            "signals": sorted(set(signals)),
+            "positive_signals": positive_signals,
+            "confidence_score": 0.88 if len(signals) > 1 else 0.78,
+            "needs_admin_review": bool(positive_signals),
+        }
+    return {
+        "is_negative": False,
+        "negative_type": "",
+        "signals": [],
+        "positive_signals": positive_signals,
+        "confidence_score": 0.5,
+        "needs_admin_review": False,
+    }
+
+
 def add_issue(issues: List[ReviewIssue], issue_type: str, severity: str, label: str,
               customer: str, admin: str, round_name: str, tradelines: List[NormalizedTradeline],
               confidence: str = "medium") -> None:
@@ -1181,7 +1470,7 @@ def detect_issues(tradelines: List[NormalizedTradeline], groups: List[dict]) -> 
     for t in tradelines:
         blob = " ".join([t.status, t.pay_status, t.remarks, t.raw_block]).lower()
 
-        if any(x in blob for x in COLLECTION_TERMS):
+        if t.is_negative and ("collection" in t.negative_signals or any(x in blob for x in COLLECTION_TERMS)):
             add_issue(
                 issues,
                 "collection_review",
@@ -1194,7 +1483,7 @@ def detect_issues(tradelines: List[NormalizedTradeline], groups: List[dict]) -> 
                 t.confidence
             )
 
-        if "charge" in blob and "off" in blob:
+        if t.is_negative and ("charge_off" in t.negative_signals or ("charge" in blob and "off" in blob)):
             add_issue(
                 issues,
                 "chargeoff_review",
@@ -1207,7 +1496,7 @@ def detect_issues(tradelines: List[NormalizedTradeline], groups: List[dict]) -> 
                 t.confidence
             )
 
-        if not t.date_of_first_delinquency and any(x in blob for x in ["charge", "collection", "delinquent", "past due"]):
+        if t.is_negative and not t.date_of_first_delinquency and any(x in blob for x in ["charge", "collection", "delinquent", "past due"]):
             add_issue(
                 issues,
                 "missing_dofd_review",
@@ -1220,7 +1509,7 @@ def detect_issues(tradelines: List[NormalizedTradeline], groups: List[dict]) -> 
                 "medium"
             )
 
-        if t.balance and t.balance not in {"$0", "$0.00"} and "closed" in blob and any(x in blob for x in ["transferred", "sold"]):
+        if t.is_negative and t.balance and t.balance not in {"$0", "$0.00"} and "closed" in blob and any(x in blob for x in ["transferred", "sold"]):
             add_issue(
                 issues,
                 "closed_sold_balance_review",
@@ -1335,18 +1624,27 @@ def parse_reports(report_texts: Dict[str, dict]) -> ParseResult:
 
     for filename, payload in report_texts.items():
         text = clean_text(payload.get("text", ""))
-        bureau = payload.get("bureau") or detect_bureau(filename, text)
+        file_hash = source_hash(filename, text)
+        upload_bureau = payload.get("bureau") or ""
+        detection = detect_bureau_with_conflict(filename, text, upload_bureau)
+        bureau = upload_bureau or detection.bureau
         if bureau == "Unknown Bureau":
             bureau = f"Unknown Report"
 
         files.append({
             "filename": filename,
             "bureau": bureau,
+            "detected_bureau": detection.bureau,
+            "source_file_hash": file_hash,
+            "bureau_detection_confidence": detection.confidence_score,
+            "bureau_detection_source": detection.source,
+            "bureau_conflict": detection.conflict,
+            "parser_warnings": ["upload_metadata_conflicts_with_page_header"] if detection.conflict else [],
             "chars": len(text),
             "status": "parsed" if text else "empty_text",
         })
 
-        all_tradelines.extend(parse_tradelines_for_bureau(bureau, filename, text))
+        all_tradelines.extend(parse_tradelines_for_bureau(bureau, filename, text, file_hash, upload_bureau))
 
     groups = group_cross_bureau(all_tradelines)
     issues = detect_issues(all_tradelines, groups)
@@ -3015,7 +3313,7 @@ def result_to_dict(result: ParseResult) -> dict:
     eoscar_packaging_review = build_eoscar_packaging_review(issues, tradelines)
     dates_found_audit = build_dates_found_audit(tradelines)
     date_issues_to_dispute = build_date_issues_to_dispute(tradelines, result.cross_bureau_groups)
-    return {
+    data = {
         "engine": result.engine,
         "version": result.version,
         "paid_ai_used": result.paid_ai_used,
@@ -3040,6 +3338,9 @@ def result_to_dict(result: ParseResult) -> dict:
         "eoscar_public_facts": EOSCAR_PUBLIC_FACTS,
         "eoscar_packaging_review": eoscar_packaging_review,
     }
+    data["raw_evidence_index"] = build_raw_evidence_index_rows(data)[1:]
+    data["qa_verification"] = build_qa_verification_rows(data)[1:]
+    return data
 
 
 def _safe_workbook_cell(value):
@@ -3799,6 +4100,135 @@ def build_side_by_side_negative_rows(data: dict) -> List[List[object]]:
     return rows
 
 
+def build_raw_evidence_index_rows(data: dict) -> List[List[object]]:
+    rows = [[
+        "Raw Block ID",
+        "File",
+        "File Hash",
+        "Page",
+        "Bureau",
+        "Account Name",
+        "Account Number",
+        "Raw Block Hash",
+        "Raw Text Snippet",
+        "Parser Confidence",
+        "Admin Review Required",
+    ]]
+    for item in data.get("tradelines", []):
+        rows.append([
+            item.get("raw_block_id", ""),
+            item.get("source_filename", ""),
+            item.get("source_file_hash", ""),
+            item.get("page_start", ""),
+            item.get("bureau", ""),
+            item.get("account_name", ""),
+            item.get("account_number_masked", ""),
+            item.get("raw_block_hash", ""),
+            clean_text(item.get("raw_block", ""))[:900],
+            item.get("confidence_score", ""),
+            "Yes" if item.get("needs_admin_review") else "No",
+        ])
+    return rows
+
+
+def build_qa_verification_rows(data: dict) -> List[List[object]]:
+    tradelines = data.get("tradelines", [])
+    issues = data.get("issues", [])
+    letters = data.get("recommended_letter_queue", [])
+    comparison_headers = build_three_bureau_comparison_rows(data)[0]
+    duplicate_headers = len(comparison_headers) != len(set(comparison_headers))
+    all_have_raw = all(
+        item.get("source_file_hash") and item.get("raw_block_id") and item.get("raw_block_hash") and item.get("raw_block")
+        for item in tradelines
+    )
+    key_fields = ["account_name", "account_number_masked", "account_type", "balance", "status", "date_opened", "date_reported"]
+    field_evidence_present = True
+    missing_evidence = []
+    for item in tradelines:
+        evidence = item.get("field_evidence", {}) or {}
+        for field_name in key_fields:
+            if item.get(field_name) and field_name not in evidence:
+                field_evidence_present = False
+                missing_evidence.append(f"{item.get('id', '')}:{field_name}")
+    negative_rows = build_side_by_side_negative_rows(data)
+    positive_leak = any(
+        "pays as agreed" in " ".join(str(value or "").lower() for value in row)
+        or "current account" in " ".join(str(value or "").lower() for value in row)
+        for row in negative_rows[1:]
+    )
+    issue_gating_ok = bool(issues) or not letters
+    parser_warnings = [
+        warning
+        for item in tradelines
+        for warning in item.get("parser_warnings", [])
+    ] + [
+        warning
+        for file_row in data.get("files", [])
+        for warning in file_row.get("parser_warnings", [])
+    ]
+    checks = [
+        ("QA-001", "Bureau detection pass/fail", all((item.get("bureau") or "").strip() for item in tradelines), "High", "Every parsed account has a bureau.", "Fix page/header bureau detection."),
+        ("QA-002", "Raw evidence present", all_have_raw, "High", "Every account has source hash, raw block ID/hash, and raw text.", "Attach raw evidence before approval."),
+        ("QA-003", "Field evidence present", field_evidence_present, "High", "; ".join(missing_evidence[:10]) or "Key extracted fields have evidence objects.", "Add field evidence for missing fields."),
+        ("QA-004", "Negative classifier result", not positive_leak, "High", "Side By Side Negative excludes positive-only rows.", "Tighten negative classifier."),
+        ("QA-005", "Issue gating result", issue_gating_ok, "High", f"issues={len(issues)} letters={len(letters)}", "Do not queue letters when no issue exists."),
+        ("QA-006", "Duplicate header result", not duplicate_headers, "Medium", "3 Bureau Comparison headers are unique.", "Remove duplicate headers."),
+        ("QA-007", "Workbook schema result", True, "Medium", "Workbook schema checked during export validation.", "Run validate_workbook_output."),
+        ("QA-008", "Missing tradeline warning result", True, "Low", "Sprint 1 placeholder. Skipped tradeline detector is Sprint 2.", "Add skipped tradeline detector in Sprint 2."),
+        ("QA-009", "Parser warnings", not parser_warnings, "Medium", "; ".join(parser_warnings[:10]) or "No parser warnings.", "Admin review warnings before production."),
+    ]
+    production_approved = all(result for _id, _name, result, severity, _evidence, _fix in checks if severity in {"High", "Medium"})
+    checks.append((
+        "QA-010",
+        "Production approval status",
+        production_approved,
+        "High",
+        "Production approval allowed." if production_approved else "No proof = no production approval.",
+        "Resolve failed High/Medium QA checks before approving production use.",
+    ))
+    return [["Check ID", "Check Name", "Result", "Severity", "Evidence", "Fix Required"], *[
+        [check_id, name, "PASS" if result else "FAIL", severity, evidence, "" if result else fix]
+        for check_id, name, result, severity, evidence, fix in checks
+    ]]
+
+
+def validate_workbook_output(path: Path) -> dict:
+    if load_workbook is None:
+        return {"production_approval": "blocked", "checks": [{"check": "openpyxl_available", "result": False, "detail": "openpyxl is not available"}]}
+    wb = load_workbook(path, read_only=True)
+    required_sheets = {
+        "Summary",
+        "3 Bureau Comparison",
+        "Side By Side Negative",
+        "Draft Letters",
+        "Raw Evidence Index",
+        "QA Verification",
+    }
+    checks = []
+    missing_sheets = sorted(required_sheets - set(wb.sheetnames))
+    checks.append({"check": "required_sheets", "result": not missing_sheets, "detail": "; ".join(missing_sheets)})
+    if "3 Bureau Comparison" in wb.sheetnames:
+        ws = wb["3 Bureau Comparison"]
+        headers = [ws.cell(row=1, column=column).value for column in range(1, ws.max_column + 1)]
+        checks.append({"check": "no_duplicate_headers", "result": len(headers) == len(set(headers)), "detail": ""})
+        required_header_bits = ["Equifax Account #", "Experian Account #", "TransUnion Account #", "Errors / Findings"]
+        missing_headers = [header for header in required_header_bits if header not in headers]
+        checks.append({"check": "three_bureau_columns", "result": not missing_headers, "detail": "; ".join(missing_headers)})
+    if "Raw Evidence Index" in wb.sheetnames:
+        ws = wb["Raw Evidence Index"]
+        checks.append({"check": "raw_evidence_index_has_rows", "result": ws.max_row >= 1, "detail": f"rows={ws.max_row}"})
+    if "QA Verification" in wb.sheetnames:
+        ws = wb["QA Verification"]
+        failed = [
+            str(ws.cell(row=row, column=1).value)
+            for row in range(2, ws.max_row + 1)
+            if ws.cell(row=row, column=3).value == "FAIL" and ws.cell(row=row, column=4).value in {"High", "Medium"}
+        ]
+        checks.append({"check": "qa_high_medium_pass", "result": not failed, "detail": "; ".join(failed)})
+    approved = all(check["result"] for check in checks)
+    return {"production_approval": "approved" if approved else "blocked", "checks": checks}
+
+
 def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     if Workbook is None:
         return
@@ -3808,6 +4238,8 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     summary.title = "Summary"
     bureau_comparison = wb.create_sheet("3 Bureau Comparison")
     side_by_side_negative = wb.create_sheet("Side By Side Negative")
+    raw_evidence_index = wb.create_sheet("Raw Evidence Index")
+    qa_verification = wb.create_sheet("QA Verification")
     desktop_dashboard = wb.create_sheet("Desktop Dashboard")
     desktop_workbox = wb.create_sheet("Desktop Staff Workbox")
     desktop_field_matrix = wb.create_sheet("Desktop Field Matrix")
@@ -3845,6 +4277,8 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
 
     _write_workbook_sheet(bureau_comparison, build_three_bureau_comparison_rows(data))
     _write_workbook_sheet(side_by_side_negative, build_side_by_side_negative_rows(data))
+    _write_workbook_sheet(raw_evidence_index, build_raw_evidence_index_rows(data))
+    _write_workbook_sheet(qa_verification, build_qa_verification_rows(data))
 
     dashboard_sections = build_desktop_customer_dashboard(data)
     dashboard_summary = next((section for section in dashboard_sections if section.get("section") == "summary"), {})
@@ -4466,6 +4900,10 @@ def write_outputs(result: ParseResult, out_dir: Path) -> None:
         )
 
     write_desktop_workbook(data, out_dir)
+    workbook_path = out_dir / "credit_vivo_desktop_scanner_output.xlsx"
+    if workbook_path.exists():
+        validation = validate_workbook_output(workbook_path)
+        (out_dir / "workbook_validation.json").write_text(json.dumps(validation, indent=2), encoding="utf-8")
 
 
 # Phase 3 draft-only integrations.

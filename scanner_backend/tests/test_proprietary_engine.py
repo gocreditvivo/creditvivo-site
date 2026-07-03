@@ -1,4 +1,4 @@
-from credit_vivo_proprietary_engine import build_three_bureau_comparison_rows, is_bad_account_name, parse_reports, result_to_dict, write_outputs
+from credit_vivo_proprietary_engine import build_three_bureau_comparison_rows, is_bad_account_name, parse_reports, result_to_dict, validate_workbook_output, write_outputs
 from openpyxl import load_workbook
 
 SAMPLE = """
@@ -218,6 +218,23 @@ def test_parse_sample_report(tmp_path):
     data = result_to_dict(result)
     assert data["paid_ai_used"] is False
     assert data["tradelines"]
+    assert data["files"][0]["source_file_hash"]
+    assert all(item["source_file_hash"] for item in data["tradelines"])
+    assert all(item["raw_block_id"] for item in data["tradelines"])
+    assert all(item["raw_block_hash"] for item in data["tradelines"])
+    for item in data["tradelines"]:
+        evidence = item["field_evidence"]
+        assert evidence
+        for field_name in ["account_name", "account_number_masked", "account_type", "balance"]:
+            if item.get(field_name):
+                assert field_name in evidence
+                assert evidence[field_name]["source_file_hash"] == item["source_file_hash"]
+                assert evidence[field_name]["page"] == item["page_start"]
+                assert evidence[field_name]["bureau"] == item["bureau"]
+                assert evidence[field_name]["raw_block_id"] == item["raw_block_id"]
+                assert evidence[field_name]["raw_block_hash"] == item["raw_block_hash"]
+                assert evidence[field_name]["raw_line"]
+                assert evidence[field_name]["extraction_rule_id"]
     assert data["issues"]
     labels = {x["customer_label"] for x in data["issues"]}
     assert "Collection review" in labels or "Charge-off review" in labels
@@ -347,11 +364,19 @@ def test_parse_sample_report(tmp_path):
     assert (tmp_path / "dates_found_audit.csv").exists()
     workbook_path = tmp_path / "credit_vivo_desktop_scanner_output.xlsx"
     assert workbook_path.exists()
+    validation_path = tmp_path / "workbook_validation.json"
+    assert validation_path.exists()
+    validation = validate_workbook_output(workbook_path)
+    assert validation["production_approval"] in {"approved", "blocked"}
+    assert any(check["check"] == "required_sheets" and check["result"] for check in validation["checks"])
+    assert any(check["check"] == "no_duplicate_headers" and check["result"] for check in validation["checks"])
     workbook = load_workbook(workbook_path, read_only=True)
     assert workbook.sheetnames == [
         "Summary",
         "3 Bureau Comparison",
         "Side By Side Negative",
+        "Raw Evidence Index",
+        "QA Verification",
         "Desktop Dashboard",
         "Desktop Staff Workbox",
         "Desktop Field Matrix",
@@ -448,6 +473,39 @@ def test_parse_sample_report(tmp_path):
     assert "MIDLAND CREDIT MANAGEMENT" in side_text
     assert "Balance" in side_text
     assert "Missing from one or more bureaus" in side_text or "Mismatch across bureaus" in side_text
+    raw_evidence = workbook["Raw Evidence Index"]
+    raw_evidence_headers = [raw_evidence.cell(row=1, column=column).value for column in range(1, raw_evidence.max_column + 1)]
+    assert raw_evidence_headers == [
+        "Raw Block ID",
+        "File",
+        "File Hash",
+        "Page",
+        "Bureau",
+        "Account Name",
+        "Account Number",
+        "Raw Block Hash",
+        "Raw Text Snippet",
+        "Parser Confidence",
+        "Admin Review Required",
+    ]
+    raw_evidence_text = " ".join(
+        str(raw_evidence.cell(row=row, column=column).value or "")
+        for row in range(2, raw_evidence.max_row + 1)
+        for column in range(1, raw_evidence.max_column + 1)
+    )
+    assert "MIDLAND CREDIT MANAGEMENT" in raw_evidence_text
+    assert "Account Number" in raw_evidence_text
+    qa_verification = workbook["QA Verification"]
+    qa_headers = [qa_verification.cell(row=1, column=column).value for column in range(1, qa_verification.max_column + 1)]
+    assert qa_headers == ["Check ID", "Check Name", "Result", "Severity", "Evidence", "Fix Required"]
+    qa_text = " ".join(
+        str(qa_verification.cell(row=row, column=column).value or "")
+        for row in range(2, qa_verification.max_row + 1)
+        for column in range(1, qa_verification.max_column + 1)
+    )
+    assert "Raw evidence present" in qa_text
+    assert "Field evidence present" in qa_text
+    assert "Production approval status" in qa_text
     desktop_dashboard = workbook["Desktop Dashboard"]
     dashboard_text = " ".join(
         str(desktop_dashboard.cell(row=row, column=column).value or "")
@@ -691,7 +749,17 @@ def test_page_level_bureau_detection_positive_accounts_no_disputes(tmp_path):
     by_account = {item["account_number_masked"]: item for item in data["tradelines"]}
 
     assert by_account["*1664"]["bureau"] == "Equifax"
+    assert by_account["*1664"]["bureau_conflict"] is True
+    assert "upload_metadata_conflicts_with_page_header" in by_account["*1664"]["parser_warnings"]
     assert by_account["*4796"]["bureau"] == "Experian"
+    assert all(item["source_file_hash"] for item in data["tradelines"])
+    assert all(item["raw_block_id"] and item["raw_block_hash"] for item in data["tradelines"])
+    assert by_account["*1664"]["is_negative"] is False
+    assert by_account["*4796"]["is_negative"] is False
+    for item in data["tradelines"]:
+        for field_name in ["account_name", "account_number_masked", "account_type", "balance", "status", "date_opened", "date_reported"]:
+            assert field_name in item["field_evidence"]
+            assert item["field_evidence"][field_name]["raw_line"]
     assert data["issues"] == []
     assert data["recommended_letter_queue"] == []
 
@@ -728,6 +796,8 @@ def test_page_level_bureau_detection_positive_accounts_no_disputes(tmp_path):
 
     assert workbook["Side By Side Negative"].max_row == 1
     assert workbook["Draft Letters"].max_row == 1
+    assert "Raw Evidence Index" in workbook.sheetnames
+    assert "QA Verification" in workbook.sheetnames
 
 
 def test_three_bureau_comparison_includes_ungrouped_accounts():
