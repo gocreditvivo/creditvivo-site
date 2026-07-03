@@ -419,6 +419,16 @@ NON_ACCOUNT_SECTION_TERMS = [
 
 def detect_bureau(filename: str, text: str) -> str:
     sample = (filename + "\n" + text[:5000]).lower()
+    header_text = text[:1200].lower()
+    exact_headers = {
+        "Equifax": [r"\bequifax\s+credit\s+report\b", r"\bequifax\s+credit\s+file\b"],
+        "Experian": [r"\bexperian\s+credit\s+report\b", r"\bexperian\s+credit\s+file\b"],
+        "TransUnion": [r"\btransunion\s+credit\s+report\b", r"\btrans\s*union\s+credit\s+report\b"],
+    }
+    for bureau, patterns in exact_headers.items():
+        if any(re.search(pattern, header_text, flags=re.I) for pattern in patterns):
+            return bureau
+
     scores = {}
     for bureau, terms in BUREAU_SIGNATURES.items():
         scores[bureau] = sum(1 for t in terms if t in sample)
@@ -926,56 +936,67 @@ def confidence_label(score: float) -> str:
     return "low"
 
 
+def page_bureau_map(text: str) -> Dict[Optional[int], str]:
+    return {
+        page_num: detect_bureau("", page_text)
+        for page_num, page_text in page_split(text)
+    }
+
+
 def parse_tradelines_for_bureau(bureau: str, filename: str, text: str) -> List[NormalizedTradeline]:
     tradelines = []
-    for page_num, block in candidate_blocks(text):
-        lower = block.lower()
-        if is_boilerplate_block(block):
-            continue
-        has_signal = (
-            any(term in lower for term in NEGATIVE_TERMS)
-            or any(label in lower for label in ["account number", "account #", "date opened", "payment status", "account status"])
-        )
-        if not has_signal:
-            continue
+    for page_num, page_text in page_split(text):
+        page_bureau = detect_bureau("", page_text)
+        active_bureau = page_bureau if page_bureau != "Unknown Bureau" else bureau
+        page_input = f"--- PAGE {page_num} ---\n{page_text}" if page_num is not None else page_text
+        for page_num, block in candidate_blocks(page_input):
+            lower = block.lower()
+            if is_boilerplate_block(block):
+                continue
+            has_signal = (
+                any(term in lower for term in NEGATIVE_TERMS)
+                or any(label in lower for label in ["account number", "account #", "date opened", "payment status", "account status"])
+            )
+            if not has_signal:
+                continue
 
-        account_name = guess_account_name(block)
-        t = NormalizedTradeline(
-            id=stable_id(bureau, filename, account_name, block[:160]),
-            bureau=bureau,
-            source_filename=filename,
-            account_name=account_name,
-            account_number_masked=extract_field("account_number_masked", block),
-            account_type=extract_field("account_type", block),
-            portfolio_type=extract_field("portfolio_type", block),
-            responsibility=extract_field("responsibility", block),
-            creditor_classification=extract_field("creditor_classification", block),
-            original_creditor=extract_field("original_creditor", block),
-            collector_or_debt_buyer=extract_field("collector_or_debt_buyer", block),
-            status=extract_field("status", block),
-            pay_status=extract_field("pay_status", block),
-            balance=extract_field("balance", block),
-            past_due=extract_field("past_due", block),
-            high_credit_or_original_amount=extract_field("high_credit_or_original_amount", block),
-            credit_limit=extract_field("credit_limit", block),
-            date_opened=extract_field("date_opened", block),
-            date_closed=extract_field("date_closed", block),
-            date_reported=extract_field("date_reported", block),
-            date_last_activity=extract_field("date_last_activity", block),
-            date_last_payment=extract_field("date_last_payment", block),
-            date_of_first_delinquency=extract_field("date_of_first_delinquency", block),
-            estimated_removal_date=extract_field("estimated_removal_date", block),
-            remarks=extract_field("remarks", block),
-            raw_block=block[:2500],
-            page_start=page_num,
-        )
-        infer_missing_fields_from_block(t)
-        t.confidence_score = score_confidence(t)
-        t.confidence = confidence_label(t.confidence_score)
-        t.needs_admin_review = t.confidence != "high"
-        if not is_probable_tradeline(t):
-            continue
-        tradelines.append(t)
+            account_name = guess_account_name(block)
+            t = NormalizedTradeline(
+                id=stable_id(active_bureau, filename, account_name, block[:160]),
+                bureau=active_bureau,
+                source_filename=filename,
+                account_name=account_name,
+                account_number_masked=extract_field("account_number_masked", block),
+                account_type=extract_field("account_type", block),
+                portfolio_type=extract_field("portfolio_type", block),
+                responsibility=extract_field("responsibility", block),
+                creditor_classification=extract_field("creditor_classification", block),
+                original_creditor=extract_field("original_creditor", block),
+                collector_or_debt_buyer=extract_field("collector_or_debt_buyer", block),
+                status=extract_field("status", block),
+                pay_status=extract_field("pay_status", block),
+                balance=extract_field("balance", block),
+                past_due=extract_field("past_due", block),
+                high_credit_or_original_amount=extract_field("high_credit_or_original_amount", block),
+                credit_limit=extract_field("credit_limit", block),
+                date_opened=extract_field("date_opened", block),
+                date_closed=extract_field("date_closed", block),
+                date_reported=extract_field("date_reported", block),
+                date_last_activity=extract_field("date_last_activity", block),
+                date_last_payment=extract_field("date_last_payment", block),
+                date_of_first_delinquency=extract_field("date_of_first_delinquency", block),
+                estimated_removal_date=extract_field("estimated_removal_date", block),
+                remarks=extract_field("remarks", block),
+                raw_block=block[:2500],
+                page_start=page_num,
+            )
+            infer_missing_fields_from_block(t)
+            t.confidence_score = score_confidence(t)
+            t.confidence = confidence_label(t.confidence_score)
+            t.needs_admin_review = t.confidence != "high"
+            if not is_probable_tradeline(t):
+                continue
+            tradelines.append(t)
 
     return dedupe_tradelines(tradelines)
 
@@ -1061,6 +1082,8 @@ def same_cross_bureau_account(left: NormalizedTradeline, right: NormalizedTradel
 
     if acct_match:
         return True
+    if left.account_number_masked and right.account_number_masked and left.account_number_masked != right.account_number_masked:
+        return False
 
     if name_score >= 0.82:
         return True
@@ -3247,11 +3270,11 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
         tradeline_indexes_by_id.setdefault(item.get("id"), []).append(index)
     bureau_order = ["Equifax", "Experian", "TransUnion"]
     cross_issue_ids = set()
+    dispute_issue_ids = set()
     per_bureau_fields = [
         ("Source", "source_filename"),
         ("Account #", "account_number_masked"),
         ("Type", "account_type"),
-        ("Original Creditor", "original_creditor"),
         ("Balance", "balance"),
         ("Past Due", "past_due"),
         ("Status", "status"),
@@ -3260,49 +3283,26 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
         ("Reported", "date_reported"),
         ("DOFD", "date_of_first_delinquency"),
         ("Remarks", "remarks"),
-        ("Confidence", "confidence"),
-        ("Raw Evidence", "raw_block"),
     ]
 
     for issue in data.get("issues", []):
         if str(issue.get("issue_type", "")).startswith("cross_bureau"):
             cross_issue_ids.update(issue.get("related_tradeline_ids", []))
+        if issue.get("issue_type") != "low_confidence_admin_review":
+            dispute_issue_ids.update(issue.get("related_tradeline_ids", []))
 
     rows = [[
         "Account Name",
-        "Primary Bureau",
-        "Matched Bureaus",
-        "Missing Bureaus",
-        "Errors",
-        "Findings",
-        "Primary Account #",
-        "Primary Type",
-        "Primary Balance",
-        "Primary Past Due",
-        "Primary Status",
-        "Primary Opened",
-        "Primary Reported",
-        "Primary DOFD",
+        "Account #",
+        "Account Type",
     ]]
     for bureau in bureau_order:
         rows[0].extend([f"{bureau} {label}" for label, _field in per_bureau_fields])
     rows[0].extend([
-        "Dispute Targets",
-        "Primary Dispute Method",
-        "Secondary Dispute Methods",
-        "Metro 2 Field Focus",
-        "CFPB/CFPA Escalation Trigger",
-        "Bureau Dispute Draft",
-        "Furnisher Dispute Draft",
-        "Debt Validation Draft",
-        "SOP Round",
-        "SOP Status",
-        "SOP Timing",
-        "SOP Required Packet",
-        "SOP Tracking Checklist",
-        "SOP Approval Gate",
-        "SOP Escalation Rule",
-        "Tracking Status",
+        "Matched Bureaus",
+        "Missing Bureaus",
+        "Errors / Findings",
+        "Recommended Action",
         "Group ID",
     ])
 
@@ -3333,67 +3333,31 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
             flags.append("Missing on " + ", ".join(missing))
 
         has_cross_issue = any(item.get("id") in cross_issue_ids for item in items)
-        sop = sop_for_comparison([flag for flag in flags if flag], missing, has_cross_issue)
-        methods = dispute_methods_for_comparison([flag for flag in flags if flag], missing, has_cross_issue)
+        has_dispute_issue = any(item.get("id") in dispute_issue_ids for item in items)
         suggested_review = (
             "Review and dispute field-level mismatch if inaccurate or unverifiable."
-            if has_cross_issue or any(flags)
-            else
-            "Matched across bureaus. No mismatch flag detected."
+            if has_dispute_issue
+            else (
+                "Account appears on fewer than three bureaus. Missing bureau presence alone is not a dispute issue."
+                if missing
+                else "Matched across bureaus. No mismatch flag detected."
+            )
         )
         account_name = "; ".join(sorted({name for name in account_names if name}))
-        error_text = "; ".join(flag for flag in flags if flag) or "No mismatch flag detected."
-        dispute_targets = "Credit bureaus and furnishing creditor/collector"
-        bureau_letter = (
-            "DRAFT - CUSTOMER REVIEW AND APPROVAL REQUIRED\n"
-            "To: Credit Bureau\n"
-            f"Re: {account_name}\n\n"
-            "I dispute the accuracy, completeness, and/or verifiability of this account as reported on my credit file. "
-            f"The bureau comparison shows: {error_text}. "
-            "Please conduct a reasonable FCRA investigation, forward all relevant dispute information to the furnisher, "
-            "mark the item as disputed while pending, and correct, update, or delete any information that cannot be verified as accurate and complete. "
-            "Please provide written investigation results and an updated report if changes are made."
-        )
-        furnisher_letter = (
-            "DRAFT - CUSTOMER REVIEW AND APPROVAL REQUIRED\n"
-            "To: Furnisher / Collector\n"
-            f"Re: {account_name}\n\n"
-            "I dispute the accuracy, completeness, and/or verifiability of the information you are furnishing about this account. "
-            f"The bureau comparison shows: {error_text}. "
-            "Please investigate your records and provide the basis for reporting, including balance support, account status support, "
-            "date reporting support, ownership/assignment records where applicable, and any records used to verify the account. "
-            "If the information cannot be verified as accurate and complete, please correct, update, or stop furnishing the disputed information."
-        )
-        debt_validation_letter = (
-            "DRAFT - CUSTOMER REVIEW AND APPROVAL REQUIRED\n"
-            "To: Debt Collector / Debt Buyer\n"
-            f"Re: {account_name}\n\n"
-            "I request validation of the debt you claim is owed or are reporting. Please provide the original creditor, "
-            "an itemized balance, documents showing consumer responsibility, chain of title or assignment, authority to collect/report, "
-            "date of first delinquency support, and the account identifier used for reporting. Nothing in this request is an admission "
-            "that the debt is owed."
+        error_text = (
+            "; ".join(flag for flag in flags if flag and not flag.startswith("Missing on"))
+            if has_dispute_issue
+            else "No verified dispute issue detected."
         )
 
         primary_item = next((by_bureau.get(bureau) for bureau in bureau_order if by_bureau.get(bureau)), items[0] if items else {})
-        primary_status = primary_item.get("status") or primary_item.get("pay_status") or ""
         matched_bureaus = ", ".join(sorted(by_bureau.keys()))
         missing_bureaus = ", ".join(missing)
 
         row = [
             account_name,
-            primary_item.get("bureau", ""),
-            matched_bureaus,
-            missing_bureaus,
-            error_text,
-            suggested_review,
             primary_item.get("account_number_masked", "") or primary_item.get("account_number", ""),
             primary_item.get("account_type", ""),
-            primary_item.get("balance", ""),
-            primary_item.get("past_due", ""),
-            primary_status,
-            primary_item.get("date_opened", ""),
-            primary_item.get("date_reported", ""),
-            primary_item.get("date_of_first_delinquency", ""),
         ]
         for bureau in bureau_order:
             item = by_bureau.get(bureau, {})
@@ -3401,26 +3365,12 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
                 value = item.get(field, "")
                 if field == "status":
                     value = item.get("status") or item.get("pay_status") or ""
-                if field == "raw_block":
-                    value = clean_text(str(value))[:650]
                 row.append(value)
         row.extend([
-            dispute_targets,
-            methods["primary"],
-            methods["secondary"],
-            methods["metro2_focus"],
-            methods["cfpb_cfpa_trigger"],
-            bureau_letter,
-            furnisher_letter,
-            debt_validation_letter,
-            sop["round"],
-            sop["status"],
-            sop["timing"],
-            sop["packet"],
-            sop["tracking"],
-            sop["approval"],
-            sop["escalation"],
-            "draft_not_sent_customer_approval_required",
+            matched_bureaus,
+            missing_bureaus,
+            error_text,
+            suggested_review,
             group_id,
         ])
         return row
@@ -3447,15 +3397,13 @@ def build_three_bureau_comparison_rows(data: dict) -> List[List[object]]:
     if len(rows) == 1:
         rows.append([
             "No matched cross-bureau accounts",
+            "",
+            "",
             *["" for _ in range(len(bureau_order) * len(per_bureau_fields))],
+            "",
+            "",
             "No 3-bureau comparison could be created from the uploaded report set.",
             "Upload reports from at least two bureaus to compare the same account side by side.",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
             "",
         ])
 
@@ -3688,8 +3636,64 @@ def build_desktop_bureau_field_matrix(data: dict) -> List[dict]:
     return rows
 
 
+def is_negative_review_item(item: dict) -> bool:
+    blob = " ".join(
+        str(item.get(field, "") or "")
+        for field in [
+            "account_type",
+            "status",
+            "pay_status",
+            "remarks",
+            "past_due",
+            "date_of_first_delinquency",
+            "estimated_removal_date",
+            "collector_or_debt_buyer",
+            "raw_block",
+        ]
+    ).lower()
+    negative_markers = [
+        "collection",
+        "charge off",
+        "charge-off",
+        "charged off",
+        "past due",
+        "late",
+        "delinquent",
+        "derogatory",
+        "repossession",
+        "foreclosure",
+        "bankruptcy",
+        "settlement",
+        "settled",
+        "written off",
+        "bad debt",
+        "unpaid",
+        "seriously past due",
+    ]
+    positive_markers = ["pays as agreed", "paid as agreed", "never late", "current", "open"]
+    if any(marker in blob for marker in negative_markers):
+        return True
+    if any(marker in blob for marker in positive_markers):
+        return False
+    return False
+
+
 def build_side_by_side_negative_rows(data: dict) -> List[List[object]]:
-    tradelines = data.get("tradelines", [])
+    negative_issue_ids = {
+        tradeline_id
+        for issue in data.get("issues", [])
+        if issue.get("issue_type") in {
+            "collection_review",
+            "chargeoff_review",
+            "missing_dofd_review",
+            "closed_sold_balance_review",
+        }
+        for tradeline_id in issue.get("related_tradeline_ids", [])
+    }
+    tradelines = [
+        item for item in data.get("tradelines", [])
+        if item.get("id") in negative_issue_ids or is_negative_review_item(item)
+    ]
     tradeline_indexes_by_id = {}
     for index, item in enumerate(tradelines):
         tradeline_indexes_by_id.setdefault(item.get("id"), []).append(index)

@@ -57,6 +57,30 @@ Date of First Delinquency: 01/01/2021
 Remarks: Account placed for collection
 """
 
+PAGE_LEVEL_POSITIVE_SAMPLE = """
+--- PAGE 1 ---
+Equifax Credit Report
+
+CREDIT ONE BANK
+Account Number: *1664
+Account Type: Credit Card
+Balance: $59
+Status: Pays As Agreed
+Date Opened: 03/09/2026
+Date Reported: 06/19/2026
+
+--- PAGE 2 ---
+Experian Credit Report
+
+CREDIT ONE BANK
+Account Number: *4796
+Account Type: Credit Card
+Balance: $125
+Status: Open
+Date Opened: 03/09/2026
+Date Reported: 06/11/2026
+"""
+
 BOILERPLATE_SAMPLE = """
 --- PAGE 1 ---
 Experian Credit Report
@@ -352,61 +376,36 @@ def test_parse_sample_report(tmp_path):
     ]
     comparison = workbook["3 Bureau Comparison"]
     headers = [comparison.cell(row=1, column=column).value for column in range(1, comparison.max_column + 1)]
-    assert headers[:14] == [
+    assert headers[:3] == [
         "Account Name",
-        "Primary Bureau",
+        "Account #",
+        "Account Type",
+    ]
+    assert len(headers) == len(set(headers))
+    assert headers[-5:] == [
         "Matched Bureaus",
         "Missing Bureaus",
-        "Errors",
-        "Findings",
-        "Primary Account #",
-        "Primary Type",
-        "Primary Balance",
-        "Primary Past Due",
-        "Primary Status",
-        "Primary Opened",
-        "Primary Reported",
-        "Primary DOFD",
-    ]
-    assert "Equifax Balance" in headers
-    assert "Equifax Raw Evidence" in headers
-    assert "Experian Balance" in headers
-    assert "Experian Account #" in headers
-    assert "Experian Raw Evidence" in headers
-    assert "Equifax Balance" in headers
-    assert "TransUnion Balance" in headers
-    assert len(headers) == len(set(headers))
-    assert headers[-17:] == [
-        "Dispute Targets",
-        "Primary Dispute Method",
-        "Secondary Dispute Methods",
-        "Metro 2 Field Focus",
-        "CFPB/CFPA Escalation Trigger",
-        "Bureau Dispute Draft",
-        "Furnisher Dispute Draft",
-        "Debt Validation Draft",
-        "SOP Round",
-        "SOP Status",
-        "SOP Timing",
-        "SOP Required Packet",
-        "SOP Tracking Checklist",
-        "SOP Approval Gate",
-        "SOP Escalation Rule",
-        "Tracking Status",
+        "Errors / Findings",
+        "Recommended Action",
         "Group ID",
     ]
-    primary_bureau_column = headers.index("Primary Bureau") + 1
-    primary_account_column = headers.index("Primary Account #") + 1
-    primary_balance_column = headers.index("Primary Balance") + 1
-    errors_column = headers.index("Errors") + 1
-    bureau_letter_column = headers.index("Bureau Dispute Draft") + 1
-    furnisher_letter_column = headers.index("Furnisher Dispute Draft") + 1
-    debt_validation_column = headers.index("Debt Validation Draft") + 1
-    primary_method_column = headers.index("Primary Dispute Method") + 1
-    secondary_method_column = headers.index("Secondary Dispute Methods") + 1
-    metro2_focus_column = headers.index("Metro 2 Field Focus") + 1
-    sop_round_column = headers.index("SOP Round") + 1
-    sop_tracking_column = headers.index("SOP Tracking Checklist") + 1
+    assert "Equifax Account #" in headers
+    assert "Equifax Balance" in headers
+    assert "Experian Account #" in headers
+    assert "Experian Balance" in headers
+    assert "TransUnion Account #" in headers
+    assert "TransUnion Balance" in headers
+    assert "Equifax Raw Evidence" not in headers
+    assert "Experian Raw Evidence" not in headers
+    assert "Bureau Dispute Draft" not in headers
+    assert "Furnisher Dispute Draft" not in headers
+    assert "Debt Validation Draft" not in headers
+
+    equifax_account_column = headers.index("Equifax Account #") + 1
+    experian_account_column = headers.index("Experian Account #") + 1
+    transunion_account_column = headers.index("TransUnion Account #") + 1
+    equifax_balance_column = headers.index("Equifax Balance") + 1
+    errors_column = headers.index("Errors / Findings") + 1
     comparison_flags = " ".join(
         str(comparison.cell(row=row, column=errors_column).value or "")
         for row in range(2, comparison.max_row + 1)
@@ -415,15 +414,19 @@ def test_parse_sample_report(tmp_path):
     assert "Status differs" in comparison_flags
     assert "DOFD differs" in comparison_flags
     assert any(
-        comparison.cell(row=row, column=primary_bureau_column).value
+        comparison.cell(row=row, column=equifax_account_column).value
         for row in range(2, comparison.max_row + 1)
     )
     assert any(
-        comparison.cell(row=row, column=primary_account_column).value
+        comparison.cell(row=row, column=experian_account_column).value
         for row in range(2, comparison.max_row + 1)
     )
     assert any(
-        comparison.cell(row=row, column=primary_balance_column).value
+        comparison.cell(row=row, column=transunion_account_column).value
+        for row in range(2, comparison.max_row + 1)
+    )
+    assert any(
+        comparison.cell(row=row, column=equifax_balance_column).value
         for row in range(2, comparison.max_row + 1)
     )
     side_by_side = workbook["Side By Side Negative"]
@@ -487,49 +490,18 @@ def test_parse_sample_report(tmp_path):
     date_issue_headers = [date_issues.cell(row=1, column=column).value for column in range(1, date_issues.max_column + 1)]
     assert "Severity" in date_issue_headers
     assert "What we found in plain English" in date_issue_headers
-    bureau_letters = " ".join(
-        str(comparison.cell(row=row, column=bureau_letter_column).value or "")
-        for row in range(2, comparison.max_row + 1)
+    draft_letters = workbook["Draft Letters"]
+    draft_letter_text = " ".join(
+        str(draft_letters.cell(row=row, column=column).value or "")
+        for row in range(2, draft_letters.max_row + 1)
+        for column in range(1, draft_letters.max_column + 1)
     )
-    furnisher_letters = " ".join(
-        str(comparison.cell(row=row, column=furnisher_letter_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    debt_validation_letters = " ".join(
-        str(comparison.cell(row=row, column=debt_validation_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    assert "To: Credit Bureau" in bureau_letters
-    assert "forward all relevant dispute information to the furnisher" in bureau_letters
-    assert "To: Furnisher / Collector" in furnisher_letters
-    assert "basis for reporting" in furnisher_letters
-    assert "To: Debt Collector / Debt Buyer" in debt_validation_letters
-    assert "itemized balance" in debt_validation_letters
-    primary_methods = " ".join(
-        str(comparison.cell(row=row, column=primary_method_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    secondary_methods = " ".join(
-        str(comparison.cell(row=row, column=secondary_method_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    metro2_focus = " ".join(
-        str(comparison.cell(row=row, column=metro2_focus_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    assert "FCRA Bureau Dispute" in primary_methods
-    assert "Direct Furnisher Dispute" in secondary_methods
-    assert "Current Balance" in metro2_focus
-    sop_rounds = " ".join(
-        str(comparison.cell(row=row, column=sop_round_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    sop_tracking = " ".join(
-        str(comparison.cell(row=row, column=sop_tracking_column).value or "")
-        for row in range(2, comparison.max_row + 1)
-    )
-    assert "Round 1 bureau dispute" in sop_rounds
-    assert "tracking number" in sop_tracking
+    assert "To: Credit Bureau" in draft_letter_text
+    assert "forward the dispute and all relevant information to the furnisher" in draft_letter_text
+    assert "To: Furnisher / Collector" in draft_letter_text
+    assert "basis for your reporting" in draft_letter_text
+    assert "To: Debt Collector / Debt Buyer" in draft_letter_text
+    assert "itemized accounting of the balance" in draft_letter_text
     expert = workbook["Metro 2 + FCRA Review"]
     expert_headers = [expert.cell(row=1, column=column).value for column in range(1, expert.max_column + 1)]
     assert "Metro 2 Fields To Review" in expert_headers
@@ -709,6 +681,53 @@ def test_money_labels_are_not_account_names():
     assert is_bad_account_name("High Balance $2,335")
     assert is_bad_account_name("Credit Limit $500")
     assert is_bad_account_name("Amount Past Due $75")
+
+
+def test_page_level_bureau_detection_positive_accounts_no_disputes(tmp_path):
+    result = parse_reports({
+        "mixed_bureau_upload.pdf": {"text": PAGE_LEVEL_POSITIVE_SAMPLE, "bureau": "Experian"},
+    })
+    data = result_to_dict(result)
+    by_account = {item["account_number_masked"]: item for item in data["tradelines"]}
+
+    assert by_account["*1664"]["bureau"] == "Equifax"
+    assert by_account["*4796"]["bureau"] == "Experian"
+    assert data["issues"] == []
+    assert data["recommended_letter_queue"] == []
+
+    write_outputs(result, tmp_path)
+    workbook = load_workbook(tmp_path / "credit_vivo_desktop_scanner_output.xlsx", read_only=True)
+    comparison = workbook["3 Bureau Comparison"]
+    headers = [comparison.cell(row=1, column=column).value for column in range(1, comparison.max_column + 1)]
+    assert len(headers) == len(set(headers))
+
+    account_column = headers.index("Account #") + 1
+    equifax_column = headers.index("Equifax Account #") + 1
+    experian_column = headers.index("Experian Account #") + 1
+    transunion_column = headers.index("TransUnion Account #") + 1
+    errors_column = headers.index("Errors / Findings") + 1
+    action_column = headers.index("Recommended Action") + 1
+
+    rows_by_account = {
+        comparison.cell(row=row, column=account_column).value: row
+        for row in range(2, comparison.max_row + 1)
+    }
+    eq_row = rows_by_account["*1664"]
+    ex_row = rows_by_account["*4796"]
+
+    assert comparison.cell(row=eq_row, column=equifax_column).value == "*1664"
+    assert comparison.cell(row=eq_row, column=experian_column).value in (None, "")
+    assert comparison.cell(row=eq_row, column=transunion_column).value in (None, "")
+    assert comparison.cell(row=eq_row, column=errors_column).value == "No verified dispute issue detected."
+    assert "Missing bureau presence alone is not a dispute issue" in comparison.cell(row=eq_row, column=action_column).value
+
+    assert comparison.cell(row=ex_row, column=equifax_column).value in (None, "")
+    assert comparison.cell(row=ex_row, column=experian_column).value == "*4796"
+    assert comparison.cell(row=ex_row, column=transunion_column).value in (None, "")
+    assert comparison.cell(row=ex_row, column=errors_column).value == "No verified dispute issue detected."
+
+    assert workbook["Side By Side Negative"].max_row == 1
+    assert workbook["Draft Letters"].max_row == 1
 
 
 def test_three_bureau_comparison_includes_ungrouped_accounts():
