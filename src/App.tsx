@@ -25,6 +25,7 @@ import BankLink from './pages/BankLink';
 import FounderHealth from './pages/FounderHealth';
 import GrowthAI from './pages/GrowthAI';
 import OwnerAICommand from './pages/OwnerAICommand';
+import Status from './pages/Status';
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/mortgage-readiness" element={<MortgageReadiness />} />
           <Route path="/apartment-denial" element={<ApartmentDenial />} />
           <Route path="/collection-not-mine" element={<CollectionNotMine />} />
+          <Route path="/status" element={<Status />} />
         </Route>
 
         {/* Member pages */}

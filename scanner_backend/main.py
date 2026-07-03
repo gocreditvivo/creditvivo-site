@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -175,6 +176,32 @@ app.add_middleware(
 )
 
 
+def service_status_payload(check_storage: bool = False) -> dict:
+    checks = {
+        "api": True,
+        "uploads_directory": UPLOADS.exists(),
+        "output_directory": OUTPUT.exists(),
+    }
+    if check_storage:
+        try:
+            probe = OUTPUT / ".readyz"
+            probe.write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            checks["storage_write"] = True
+        except Exception:
+            checks["storage_write"] = False
+
+    ok = all(checks.values())
+    return {
+        "ok": ok,
+        "service": "credit-vivo-proprietary-scanner-api",
+        "environment": os.getenv("SCANNER_ENVIRONMENT", "local"),
+        "version": "16.0",
+        "time_utc": datetime.now(timezone.utc).isoformat(),
+        "checks": checks,
+    }
+
+
 def extract_pdf_text(path: Path) -> tuple[str, int]:
     if PdfReader is None:
         raise RuntimeError("pypdf is not installed. Run: pip install -r requirements.txt")
@@ -193,8 +220,8 @@ def extract_pdf_text(path: Path) -> tuple[str, int]:
 
 @app.get("/health")
 def health():
-    return {
-        "ok": True,
+    payload = service_status_payload(check_storage=False)
+    payload.update({
         "service": "credit-vivo-proprietary-scanner-api",
         "version": "16.0",
         "paid_ai_used": False,
@@ -206,7 +233,21 @@ def health():
         "max_file_mb": MAX_FILE_MB,
         "retain_uploads": RETAIN_UPLOADS,
         "write_raw_text": WRITE_RAW_TEXT,
-    }
+    })
+    return payload
+
+
+@app.get("/livez")
+def livez():
+    return service_status_payload(check_storage=False)
+
+
+@app.get("/readyz")
+def readyz():
+    payload = service_status_payload(check_storage=True)
+    if not payload["ok"]:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
 
 
 async def save_pdf_upload(file: UploadFile, dest: Path) -> int:
