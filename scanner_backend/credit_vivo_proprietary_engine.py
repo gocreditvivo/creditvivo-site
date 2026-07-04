@@ -36,11 +36,13 @@ from urllib.parse import quote_plus
 try:
     from .bureau_debt_collection_reference import build_bureau_debt_collection_reference
     from .cfpb_packet_vault import build_cfpb_packet_system, save_document_vault_artifacts
+    from .fcra_metro2_rounds_engine import build_possible_rule_issues, build_round_tracker_rows
     from .fcra_rights_reference import build_fcra_rights_reference
     from .rules_engine import classify_negative_tradeline, load_scanner_rules
 except ImportError:
     from bureau_debt_collection_reference import build_bureau_debt_collection_reference
     from cfpb_packet_vault import build_cfpb_packet_system, save_document_vault_artifacts
+    from fcra_metro2_rounds_engine import build_possible_rule_issues, build_round_tracker_rows
     from fcra_rights_reference import build_fcra_rights_reference
     from rules_engine import classify_negative_tradeline, load_scanner_rules
 
@@ -4249,6 +4251,7 @@ def result_to_dict(result: ParseResult) -> dict:
     dates_found_audit = build_dates_found_audit(tradelines)
     date_issues_to_dispute = build_date_issues_to_dispute(tradelines, result.cross_bureau_groups)
     entity_compliance_intelligence = build_entity_compliance_intelligence(tradelines)
+    possible_rule_issues = build_possible_rule_issues(issues, tradelines)
     data = {
         "engine": result.engine,
         "version": result.version,
@@ -4256,6 +4259,7 @@ def result_to_dict(result: ParseResult) -> dict:
         "files": result.files,
         "tradelines": tradelines,
         "issues": issues,
+        "possible_rule_issues": possible_rule_issues,
         "identity_raw_data": result.identity_raw_data,
         "cross_bureau_groups": result.cross_bureau_groups,
         "customer_summary": result.customer_summary,
@@ -6630,6 +6634,7 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     entity_compliance = wb.create_sheet("Entity Compliance Intelligence")
     dates_found_audit = wb.create_sheet("Dates Found Audit")
     date_issues = wb.create_sheet("Date Issues To Dispute")
+    fcra_metro2_round_tracker = wb.create_sheet("FCRA_Metro2_Round_Tracker")
     metro2_fcra = wb.create_sheet("Metro 2 + FCRA Review")
     metro2_requirements = wb.create_sheet("Metro 2 Requirements")
     metro2_guide_notes = wb.create_sheet("Metro 2 Guide Notes")
@@ -7152,6 +7157,8 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
             for row in data.get("date_issues_to_dispute", [])
         ],
     ])
+
+    _write_workbook_sheet(fcra_metro2_round_tracker, build_round_tracker_rows(data.get("possible_rule_issues", [])))
 
     _write_workbook_sheet(metro2_fcra, [
         [

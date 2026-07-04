@@ -197,6 +197,12 @@ def test_parse_sample_report(tmp_path):
     assert data["paid_ai_used"] is False
     assert data["tradelines"]
     assert data["issues"]
+    assert data["possible_rule_issues"]
+    assert data["possible_rule_issues"][0]["customerApprovalRequired"] is True
+    assert data["possible_rule_issues"][0]["adminReviewRequired"] is True
+    assert data["possible_rule_issues"][0]["automaticSendAllowed"] is False
+    assert data["possible_rule_issues"][0]["possibleFCRARules"]
+    assert data["possible_rule_issues"][0]["nextStep"]
     labels = {x["customer_label"] for x in data["issues"]}
     assert "Collection review" in labels or "Charge-off review" in labels
     assert data["letter_workflow"]["send_letters_automatically"] is False
@@ -352,6 +358,7 @@ def test_parse_sample_report(tmp_path):
         "Raw Tradelines With Dates",
         "Dates Found Audit",
         "Date Issues To Dispute",
+        "FCRA_Metro2_Round_Tracker",
         "Metro 2 + FCRA Review",
         "Metro 2 Requirements",
         "Metro 2 Guide Notes",
@@ -385,6 +392,21 @@ def test_parse_sample_report(tmp_path):
     ]
     assert set(legacy_sheetnames).issubset(set(workbook.sheetnames))
     assert set(v9_sheetnames).issubset(set(workbook.sheetnames))
+    round_tracker = workbook["FCRA_Metro2_Round_Tracker"]
+    assert [round_tracker.cell(row=1, column=column).value for column in range(1, 12)] == [
+        "Error Found",
+        "Why Wrong",
+        "Fix Requested",
+        "Possible FCRA Rule",
+        "Possible Metro 2 Rule",
+        "Evidence",
+        "Round Detected",
+        "Next Step",
+        "Escalation Risk",
+        "Possible Consequence",
+        "Action: Fix / Delete / Keep / Needs Review",
+    ]
+    assert round_tracker.cell(row=2, column=15).value == "No"
     ours_v9 = workbook["Ours 3 Bureaus Comparison"]
     assert ours_v9.cell(row=1, column=1).value == "Three-Bureau Negative Tradeline Forensic Comparison - Experian / Equifax / TransUnion"
     assert [ours_v9.cell(row=4, column=column).value for column in range(1, 13)] == [
