@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import CreditComebackSimulator from '../components/CreditComebackSimulator';
 import { getLastScanResult } from '../lib/scanStorage';
 
 export default function Dashboard() {
   const result = getLastScanResult();
 
-  const stepsCount = result ? 3 : 3;
+  const stepsCount = result ? 4 : 3;
   const reviewCount = result?.review_items_count ?? 2;
   const issueCount = result?.issues_count ?? result?.issues_preview?.length ?? 1;
 
@@ -15,18 +16,22 @@ export default function Dashboard() {
         Member Dashboard
       </p>
       <h1 className="text-xl font-bold text-navy-900 mb-1">
-        Your Credit Roadmap is ready.
+        Your credit comeback starts here.
       </h1>
       <p className="text-sm text-navy-400 mb-6">
-        You take control. We clear the path.
+        Find errors. Build disputes. See results.
       </p>
+
+      <div className="mb-8">
+        <CreditComebackSimulator result={result} compact />
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
           { val: String(stepsCount), label: 'steps this month' },
-          { val: String(reviewCount), label: 'items to review' },
+          { val: String(reviewCount), label: 'credit blockers' },
           { val: String(issueCount), label: 'review points' },
-          { val: '0', label: 'hard pulls' },
+          { val: '100', label: 'point path' },
         ].map((s) => (
           <div
             key={s.label}
@@ -44,23 +49,23 @@ export default function Dashboard() {
           {[
             {
               num: 1,
-              title: result ? 'Review organized findings' : 'Start your Credit Check-In',
+              title: result ? 'Review your credit blockers' : 'Start your AI Credit Boost scan',
               desc: result
-                ? 'Your report review items are ready in the Findings page.'
-                : 'Upload or connect your report to start your roadmap.',
+                ? 'Your scanner-powered simulator is ready in your dashboard.'
+                : 'Upload or connect your report so Credit Vivo can find what may be holding your score back.',
               to: result ? '/findings' : '/scan',
             },
             {
               num: 2,
-              title: 'Review selected report items',
-              desc: 'We organize items that may need more review.',
+              title: 'Build smart disputes',
+              desc: 'Focus first on the items with the strongest possible score impact.',
               to: '/findings',
             },
             {
               num: 3,
-              title: 'Review balance habits',
-              desc: 'One educational action item is ready.',
-              to: '/learning',
+              title: 'See results and next steps',
+              desc: 'Watch findings, dispute progress, and score movement in one place.',
+              to: '/findings',
             },
           ].map((step) => (
             <Link
@@ -85,8 +90,8 @@ export default function Dashboard() {
         <h2 className="text-sm font-bold text-navy-900 mb-2">Updates</h2>
         <p className="text-xs text-navy-400">
           {result
-            ? 'Your latest Credit Check-In result is available. Review findings before any next action.'
-            : 'Your next progress update will show what changed, what is pending, and what to focus on next.'}
+            ? 'Your latest Credit Vivo scan is ready. Review your simulator, top credit blockers, and dispute-ready findings.'
+            : 'Your next update will show score movement, credit blockers, dispute progress, and what to focus on next.'}
         </p>
       </div>
     </div>
