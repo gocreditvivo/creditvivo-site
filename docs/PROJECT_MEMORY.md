@@ -238,20 +238,32 @@ Current docs organization:
 - `docs/reports/` - verification, handoff, and layout reports.
 - `docs/deployment/` - deployment workflow and release process notes.
 
-Previously marked as old or unused:
+Previously marked as old or unused before the Next.js portal rebuild:
 
 - `.agents/`
 - `.bolt/`
-- `app/`
-- `components/`
 - `demo/`
 - `src/app/`
-- `next.config.mjs`
-- `next-env.d.ts`
 
 Local legacy copies, when present, are organized under `archive/legacy-builds/2026-07-01-local-legacy/`.
 
 Do not delete anything just because it is old unless the user approves and the file is verified as unused.
+
+## CV Brain Scanner Layer
+
+As of 2026-07-04, the active Next.js portal uses `app/`, `components/`, `lib/`, `types/`, and `supabase/`.
+
+CV Brain is a layered TypeScript scanner intelligence layer for extracted text, bureau detection, tradeline parsing, negative-account detection, bureau comparison, issue summaries, draft-only dispute generation, and attorney-support queue preview.
+
+Production PDF extraction and proprietary parsing authority remain with the Python FastAPI scanner backend. Do not replace the native Credit Vivo parser with a thin Next.js-only parser. The Next.js scanner routes are for portal integration, extracted-text tests, API orchestration, and customer/admin dashboard flows.
+
+Every scanner release must verify:
+
+- Negative tradelines visible to a human are caught or flagged for admin review.
+- Bureau labels stay attached to tradelines after parsing.
+- Output remains draft review data only.
+- Customer approval, admin review, and compliance review remain required.
+- No automatic mail, disputes, complaints, or legal escalation are enabled.
 
 ## Verification Before Deploy
 

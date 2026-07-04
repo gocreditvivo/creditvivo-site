@@ -10,6 +10,7 @@ import type {
   ReviewAccount,
 } from "@/types/credit-vivo-member";
 import { creditVivoConfig } from "@/lib/credit-vivo/config";
+import { CVBrainUploadTester } from "@/components/member-portal/CVBrainUploadTester";
 
 const navItems = [
   ["Overview", "/member"],
@@ -365,6 +366,7 @@ export function UploadPage({ payload }: { payload: MemberPortalPayload }) {
           </div>
         ))}
       </div>
+      <CVBrainUploadTester />
     </MemberShell>
   );
 }
