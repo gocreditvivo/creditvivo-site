@@ -444,10 +444,12 @@ export function FooterDisclosure() {
         </div>
         <div className="flex flex-wrap gap-4">
           <Link href="/faq" className="hover:text-slate-950">FAQ</Link>
-          <Link href="#" className="hover:text-slate-950">Privacy Notice</Link>
-          <Link href="#" className="hover:text-slate-950">Terms</Link>
-          <Link href="#" className="hover:text-slate-950">Disclosures</Link>
-          <Link href="#" className="hover:text-slate-950">Contact</Link>
+          <Link href="/privacy" className="hover:text-slate-950">Privacy Notice</Link>
+          <Link href="/terms" className="hover:text-slate-950">Terms</Link>
+          <Link href="/disclosures" className="hover:text-slate-950">Disclosures</Link>
+          <Link href="/cancellation-refund" className="hover:text-slate-950">Cancellation / Refund Policy</Link>
+          <Link href="/security" className="hover:text-slate-950">Security</Link>
+          <Link href="/contact" className="hover:text-slate-950">Contact</Link>
         </div>
       </div>
     </footer>

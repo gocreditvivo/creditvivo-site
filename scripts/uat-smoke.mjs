@@ -6,6 +6,12 @@ const frontendRoutes = [
   "/signup",
   "/login",
   "/pricing",
+  "/terms",
+  "/privacy",
+  "/disclosures",
+  "/cancellation-refund",
+  "/security",
+  "/contact",
   "/checkout",
   "/checkout/success",
   "/member",
@@ -50,4 +56,3 @@ if (health.email_sending_enabled !== false || health.dispute_email_auto_send_ena
 }
 
 console.log("Credit Vivo staging UAT smoke passed.");
-

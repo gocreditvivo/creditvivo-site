@@ -1,12 +1,11 @@
-import { ContactShell } from "@/components/credit-vivo/ContactShell";
+import { LegalPageShell, privacySections } from "@/components/credit-vivo/LegalContentPages";
 
 export default function Page() {
   return (
-    <ContactShell
-      title="Privacy Requests"
-      subtitle="Use this contact for privacy questions, data requests, and account data concerns."
-      primaryEmail="privacy"
+    <LegalPageShell
+      title="Privacy Notice"
+      subtitle="How Credit Vivo handles customer information, credit report data, documents, privacy requests, and security expectations."
+      sections={privacySections}
     />
   );
 }
-
