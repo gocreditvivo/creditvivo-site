@@ -3,6 +3,9 @@
   "version": "18.1.7",
   "private": true,
   "description": "Credit Vivo scanner backend and frontend portal preview.",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build": "next build",
     "build:staging": "node scripts/build-staging.mjs",

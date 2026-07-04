@@ -1,22 +1,69 @@
 # Credit Vivo Project Memory
 
-Last updated: 2026-07-02
+Last updated: 2026-07-04
 
 Use this file as the working memory for Credit Vivo website, scanner, GitHub, and Vercel work. Do not place secrets, API keys, passwords, customer credit reports, SSNs, IDs, bureau credentials, or real customer documents in this file.
 
 ## Current Production Repo
 
-- Local repo path: `C:\Users\miste\OneDrive\Desktop\credit-vivo-review-package-20260629-211207\creditvivo-site`
 - Scanner-focused workspace: `C:\Users\miste\OneDrive\Desktop\Documents\CV Scanner`
 - GitHub repo: `gocreditvivo/creditvivo-site`
 - Live site: `https://www.creditvivo.com/`
-- Vercel project page: `https://vercel.com/gotimdo-4261s-projects/credit-vivo-v2/deployments`
-- Active framework: Vite + React frontend
+- Vercel project page: `https://vercel.com/gotimdo-4261s-projects/creditvivo-site`
+- Active framework in this workspace: Next.js App Router + React frontend
 - Scanner backend: Python FastAPI scanner API in `scanner_backend/`
-- Vercel API adapter: `api/index.py`
-- Active frontend folder: `src/`
-- Static dashboard preview: `dashboard.html`
+- Active frontend folders: `app/`, `components/`, `lib/`, `types/`
 - Bureau layout scanner memory: `docs/scanner/THREE_BUREAU_REPORT_LAYOUT_MEMORY.md`
+
+## Current Build Architecture Memory
+
+Use this as the current architecture truth before future builds.
+
+- Vercel should host the Next.js frontend and customer/admin portal only.
+- Render or another backend host should run the Python FastAPI scanner backend.
+- GitHub is the source-control system for `gocreditvivo/creditvivo-site`.
+- Google Workspace/Drive is for business docs and AI handoff files, not raw customer credit reports or secrets.
+- The Python scanner backend should not rely on Vercel for production parsing, workbook generation, or future batch jobs.
+- Scanner production scale should use a backend control plane, job queue, worker fleet, database, encrypted object storage, audit logs, and admin/founder progress dashboard.
+
+Current Vercel compatibility finding:
+
+- Vercel project `creditvivo-site` is currently configured incompatibly for the Codex branch preview.
+- Latest Codex branch deployment `dpl_H7qbvuxAw2uv8VV9ET1SiNBwCMuK` for commit `c4732c91` failed after `npm run build` succeeded.
+- Exact failure: Vercel expected an output directory named `public`, but this repo is a Next.js app whose build output is `.next`.
+- Vercel project framework was reported as `null`; it should be configured as Next.js.
+- Recommended Vercel settings:
+  - Framework Preset: `Next.js`
+  - Build Command: `npm run build`
+  - Output Directory: blank/default
+  - Install Command: `npm install`
+  - Root Directory: repo root
+- Production `main` deployment was still ready on older commit `a6f5d8c`; the newer Codex branch was not public because the preview deployment failed.
+
+Current runtime compatibility notes:
+
+- `package.json` builds the frontend with `next build`.
+- Local Node checked as `v26.3.0`; Vercel project showed Node `24.x`. Pin a stable Node version before launch if deployment drift causes issues.
+- `runtime.txt` says `python-3.12.8`, but Vercel logs showed CPython `3.14.3`; Python runtime should be pinned and hosted on Render/backend infrastructure instead of Vercel for the scanner.
+- Local system Python showed `3.15.0b1`; backend tests should use `scanner_backend/.venv` or a stable Python 3.12 environment.
+- Root Python files (`requirements.txt`, `runtime.txt`, `scanner_backend/`) cause Vercel to install Python packages during frontend builds. This is not the current failing error, but it is a compatibility/performance smell. Long-term, keep Vercel frontend-focused and backend-host scanner-focused.
+
+Current scanner status:
+
+- Scanner version: `18.1.7`
+- Native parser: `Credit Vivo Proprietary Parser Engine`
+- PDF text engine: `pypdf`
+- Paid AI required: no
+- Auto-send: off
+- Latest Codex branch commit: `c4732c91 Add FCRA Metro 2 rounds tracking engine`
+- Existing automated coverage rerun: backend tests `158 passed`, frontend build passed, UAT smoke passed, backend health passed.
+
+Architecture rule going forward:
+
+- Before adding more features, fix Vercel project compatibility or add repo-level deployment config.
+- Do not merge/publish the Codex branch until branch preview deploys successfully.
+- Build scanner production as a queue/worker backend, not an inline Vercel request path.
+- Preserve approval gates: no automatic disputes, letters, mail, complaints, or legal escalation.
 
 ## Latest Known Versions And Commits
 
