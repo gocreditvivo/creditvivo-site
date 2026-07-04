@@ -1,0 +1,61 @@
+import type { ScannerNegativeAccount, ScoreProfile } from '@/types/score-simulator';
+
+export const demoScoreProfile: ScoreProfile = {
+  startingScore: 552,
+  currentScore: 579,
+  goalScore: 680,
+  scoreSource: 'FICO',
+  goalReason: 'car',
+};
+
+export const demoNegativeAccounts: ScannerNegativeAccount[] = [
+  {
+    id: 'acct_1',
+    creditorName: 'Portfolio Recovery',
+    accountType: 'collection',
+    bureaus: ['Experian', 'Equifax', 'TransUnion'],
+    balance: 842,
+    status: 'Collection',
+    severity: 'collection',
+    recencyMonths: 9,
+    duplicateRisk: true,
+    disputeStrengthScore: 88,
+    possibleIssues: ['possible duplicate reporting', 'bureau balance mismatch'],
+  },
+  {
+    id: 'acct_2',
+    creditorName: 'Capital One',
+    accountType: 'charge_off',
+    bureaus: ['Experian', 'TransUnion'],
+    balance: 1320,
+    status: 'Charged off',
+    severity: 'charge_off',
+    recencyMonths: 16,
+    disputeStrengthScore: 74,
+    possibleIssues: ['date reported differs by bureau'],
+  },
+  {
+    id: 'acct_3',
+    creditorName: 'Verizon Wireless',
+    accountType: 'collection',
+    bureaus: ['Equifax'],
+    balance: 410,
+    status: 'Collection',
+    severity: 'collection',
+    recencyMonths: 28,
+    disputeStrengthScore: 82,
+    possibleIssues: ['missing original creditor details'],
+  },
+  {
+    id: 'acct_4',
+    creditorName: 'Credit Card Utilization',
+    accountType: 'high_utilization',
+    bureaus: ['Experian', 'Equifax', 'TransUnion'],
+    balance: 4500,
+    creditLimit: 5000,
+    status: 'High utilization',
+    recencyMonths: 1,
+    disputeStrengthScore: 40,
+    possibleIssues: ['utilization above 90%'],
+  },
+];

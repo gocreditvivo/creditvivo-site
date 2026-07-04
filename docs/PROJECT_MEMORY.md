@@ -265,6 +265,26 @@ Every scanner release must verify:
 - Customer approval, admin review, and compliance review remain required.
 - No automatic mail, disputes, complaints, or legal escalation are enabled.
 
+## Credit Comeback Simulator
+
+As of 2026-07-04, the member progress page includes a Credit Comeback Simulator tied to the scanner architecture.
+
+The simulator is an estimated score impact model only. It must never claim to reproduce the exact FICO formula and must never guarantee score increases, deletions, approvals, timelines, or legal outcomes.
+
+The score-impact model can use:
+
+- CV Brain negative tradelines
+- possible issue findings
+- account type
+- bureau coverage
+- severity
+- recency
+- balance and utilization
+- dispute strength score
+- duplicate risk
+
+The API bridge is `POST /api/score-simulator/estimate`. It accepts simulator-ready accounts or scanner tradelines and issues, then returns estimated impacts, summary, scenario, and compliance flags.
+
 ## Verification Before Deploy
 
 Before any push or deploy:

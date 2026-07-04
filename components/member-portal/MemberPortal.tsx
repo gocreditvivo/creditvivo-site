@@ -11,6 +11,8 @@ import type {
 } from "@/types/credit-vivo-member";
 import { creditVivoConfig } from "@/lib/credit-vivo/config";
 import { CVBrainUploadTester } from "@/components/member-portal/CVBrainUploadTester";
+import { CreditComebackSimulator } from "@/components/dashboard/CreditComebackSimulator";
+import { demoNegativeAccounts, demoScoreProfile } from "@/components/dashboard/demo-data";
 
 const navItems = [
   ["Overview", "/member"],
@@ -438,7 +440,8 @@ function DraftLetterCard({ letter }: { letter: DraftLetter }) {
 export function ProgressPage({ payload }: { payload: MemberPortalPayload }) {
   return (
     <MemberShell payload={payload} title="Track progress" subtitle="Follow your file from upload to response and next step.">
-      <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+      <CreditComebackSimulator profile={demoScoreProfile} accounts={demoNegativeAccounts} />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
         <ProgressCard payload={payload} />
         <MilestonesCard milestones={payload.progressMilestones || []} />
       </div>
