@@ -13,6 +13,7 @@ import {
   Megaphone,
   BrainCircuit,
 } from 'lucide-react';
+import UnderConstructionNotice from './UnderConstructionNotice';
 
 const sideLinks = [
   { to: '/dashboard', label: 'Roadmap', icon: Compass },
@@ -33,6 +34,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex bg-navy-50/30">
+      <UnderConstructionNotice />
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-white border-r border-navy-100/60 p-4">
         <Link to="/" className="flex items-center gap-2 mb-6">
