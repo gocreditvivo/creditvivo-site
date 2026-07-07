@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import UnderConstructionNotice from './UnderConstructionNotice';
 
 type HeaderLink =
   | { href: string; label: string; primary: true }
@@ -168,6 +169,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <UnderConstructionNotice />
       <Nav />
       <main className="flex-1">
         <Outlet />
