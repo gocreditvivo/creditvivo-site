@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credit Vivo Admin | Leads</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      * { letter-spacing: 0 !important; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-950">
+    <main class="mx-auto max-w-6xl px-5 py-8">
+      <div class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm font-black uppercase text-blue-600">Credit Vivo admin</p>
+          <h1 class="mt-2 text-3xl font-black">Review Requests</h1>
+        </div>
+        <a href="/" class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black hover:border-blue-600">View site</a>
+      </div>
+
+      <section class="mt-6 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Total leads</p>
+          <p id="leadCount" class="mt-2 text-4xl font-black">0</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Status</p>
+          <p id="adminStatus" class="mt-2 text-xl font-black">Loading</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Source</p>
+          <p class="mt-2 text-xl font-black">Website intake</p>
+        </div>
+      </section>
+
+      <section id="tokenPanel" class="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-5">
+        <label class="grid gap-2 text-sm font-black text-slate-700">
+          Admin token
+          <input id="adminToken" type="password" class="rounded-lg border border-blue-200 bg-white px-4 py-3 font-medium outline-none focus:border-blue-600" placeholder="Enter admin token" />
+        </label>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+          <button id="saveToken" class="rounded-lg bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">Unlock leads</button>
+          <button id="clearToken" class="rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-black text-slate-900 hover:border-blue-600">Clear token</button>
+        </div>
+        <p class="mt-3 text-sm font-bold text-blue-900">Use the configured <code>ADMIN_TOKEN</code>. Set a long random token before production use.</p>
+      </section>
+
+      <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[820px] text-left text-sm">
+            <thead class="bg-slate-950 text-white">
+              <tr>
+                <th class="px-4 py-3">Created</th>
+                <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Contact</th>
+                <th class="px-4 py-3">Goal</th>
+                <th class="px-4 py-3">Score</th>
+                <th class="px-4 py-3">Plan</th>
+                <th class="px-4 py-3">Contact</th>
+                <th class="px-4 py-3">Workflow</th>
+              </tr>
+            </thead>
+            <tbody id="leadRows" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+        <p id="emptyState" class="hidden p-6 text-slate-600">No review requests yet.</p>
+      </section>
+
+      <section class="mt-6 grid gap-4 lg:grid-cols-2">
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm font-black uppercase text-blue-600">Growth engine</p>
+              <h2 class="mt-2 text-2xl font-black">Acquisition Plan</h2>
+            </div>
+            <button id="refreshGrowth" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-blue-600">Refresh</button>
+          </div>
+          <div id="growthPlan" class="mt-5 text-sm text-slate-700">Unlock admin to load growth recommendations.</div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black uppercase text-emerald-600">Retention AI</p>
+          <h2 class="mt-2 text-2xl font-black">Customer Retention</h2>
+          <div id="retentionPlan" class="mt-5 text-sm text-slate-700">Unlock admin to load retention recommendations.</div>
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-black uppercase text-indigo-600">Knowledge engine</p>
+            <h2 class="mt-2 text-2xl font-black">Technology, Innovation, Compliance</h2>
+          </div>
+          <button id="refreshKnowledge" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-indigo-600">Refresh</button>
+        </div>
+        <div id="knowledgePlan" class="mt-5 text-sm text-slate-700">Unlock admin to load knowledge materials.</div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-black uppercase text-teal-600">CV operating system</p>
+            <h2 class="mt-2 text-2xl font-black">Repair, Build, Protect, Retain</h2>
+          </div>
+          <button id="refreshOps" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-teal-600">Refresh</button>
+        </div>
+        <div id="opsPlan" class="mt-5 text-sm text-slate-700">Loading operating status.</div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="text-sm font-black uppercase text-rose-600">Debug scanner</p>
+            <h2 class="mt-2 text-2xl font-black">Health, Risk, Failover</h2>
+          </div>
+          <div class="flex gap-3">
+            <button id="runDebug" class="rounded-lg bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700">Run scan</button>
+            <button id="refreshDebug" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-rose-600">Latest</button>
+          </div>
+        </div>
+        <div id="debugPlan" class="mt-5 text-sm text-slate-700">Unlock admin to run scanner.</div>
+      </section>
+    </main>
+
+    <script>
+      const leadRows = document.querySelector("#leadRows");
+      const leadCount = document.querySelector("#leadCount");
+      const adminStatus = document.querySelector("#adminStatus");
+      const emptyState = document.querySelector("#emptyState");
+      const adminToken = document.querySelector("#adminToken");
+      const saveToken = document.querySelector("#saveToken");
+      const clearToken = document.querySelector("#clearToken");
+      const tokenPanel = document.querySelector("#tokenPanel");
+      const growthPlan = document.querySelector("#growthPlan");
+      const retentionPlan = document.querySelector("#retentionPlan");
+      const refreshGrowth = document.querySelector("#refreshGrowth");
+      const knowledgePlan = document.querySelector("#knowledgePlan");
+      const refreshKnowledge = document.querySelector("#refreshKnowledge");
+      const opsPlan = document.querySelector("#opsPlan");
+      const refreshOps = document.querySelector("#refreshOps");
+      const debugPlan = document.querySelector("#debugPlan");
+      const runDebug = document.querySelector("#runDebug");
+      const refreshDebug = document.querySelector("#refreshDebug");
+
+      function cell(value) {
+        return String(value || "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+
+      function adminHeaders(token) {
+        return {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Admin-Token": token
+        };
+      }
+
+      async function promoteLead(leadId) {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        if (!token) return;
+        const button = document.querySelector(`[data-promote-lead="${leadId}"]`);
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Promoting...";
+        }
+        try {
+          const response = await fetch(`/api/leads/${leadId}/promote`, {
+            method: "POST",
+            headers: adminHeaders(token),
+            body: "{}"
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to promote lead."]).join(" "));
+          await loadLeads();
+        } catch (error) {
+          if (button) {
+            button.disabled = false;
+            button.textContent = "Promote";
+          }
+          adminStatus.textContent = error.message || "Promotion failed";
+        }
+      }
+
+      async function loadLeads() {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        tokenPanel.classList.toggle("hidden", Boolean(token));
+        if (!token) {
+          adminStatus.textContent = "Locked";
+          emptyState.classList.remove("hidden");
+          emptyState.textContent = "Enter your admin token to view review requests.";
+          growthPlan.textContent = "Unlock admin to load growth recommendations.";
+          retentionPlan.textContent = "Unlock admin to load retention recommendations.";
+          knowledgePlan.textContent = "Unlock admin to load knowledge materials.";
+          loadOps();
+          debugPlan.textContent = "Unlock admin to run scanner.";
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/leads", {
+            headers: {
+              Accept: "application/json",
+              "X-Admin-Token": token
+            }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to load review requests."]).join(" "));
+          const leads = data.leads || [];
+          leadCount.textContent = String(data.count || leads.length);
+          adminStatus.textContent = "Live";
+          emptyState.classList.toggle("hidden", leads.length > 0);
+          leadRows.innerHTML = leads.map((lead) => `
+            <tr class="align-top">
+              <td class="px-4 py-4 text-slate-600">${cell(new Date(lead.createdAt).toLocaleString())}</td>
+              <td class="px-4 py-4 font-black">${cell(lead.name)}</td>
+              <td class="px-4 py-4">
+                <div>${cell(lead.email)}</div>
+                <div class="text-slate-500">${cell(lead.phone)}</div>
+              </td>
+              <td class="px-4 py-4">${cell(lead.goal)}</td>
+              <td class="px-4 py-4">${cell(lead.scoreRange)}</td>
+              <td class="px-4 py-4">${cell(lead.planInterest)}</td>
+              <td class="px-4 py-4">${cell(lead.preferredContact)}</td>
+              <td class="px-4 py-4">
+                ${lead.workflowId
+                  ? `<a class="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100" href="/workflow-admin.html">Open workflow</a>`
+                  : `<button class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white hover:bg-blue-600" type="button" data-promote-lead="${cell(lead.id)}">Promote</button>`
+                }
+              </td>
+            </tr>
+          `).join("");
+          leadRows.querySelectorAll("[data-promote-lead]").forEach((button) => {
+            button.addEventListener("click", () => promoteLead(button.dataset.promoteLead));
+          });
+          loadGrowth(token);
+          loadKnowledge(token);
+          loadOps();
+          loadDebug(token);
+        } catch (error) {
+          adminStatus.textContent = "Locked";
+          emptyState.classList.remove("hidden");
+          emptyState.textContent = error.message || "Unable to load review requests.";
+          tokenPanel.classList.remove("hidden");
+          sessionStorage.removeItem("creditVivoAdminToken");
+        }
+      }
+
+      function renderList(items) {
+        return `<ul class="mt-3 grid gap-2">${items.map((item) => `<li class="rounded-lg bg-slate-50 p-3">${cell(item)}</li>`).join("")}</ul>`;
+      }
+
+      async function loadGrowth(token) {
+        try {
+          const [growthResponse, retentionResponse] = await Promise.all([
+            fetch("/api/growth/plan?monthlyBudget=3000", {
+              headers: { Accept: "application/json", "X-Admin-Token": token }
+            }),
+            fetch("/api/growth/retention", {
+              headers: { Accept: "application/json", "X-Admin-Token": token }
+            })
+          ]);
+          const growth = await growthResponse.json();
+          const retention = await retentionResponse.json();
+          if (!growthResponse.ok || !retentionResponse.ok) throw new Error("Growth engine locked.");
+
+          growthPlan.innerHTML = `
+            <p><strong>Audience:</strong> ${cell(growth.audience)}</p>
+            <p class="mt-2"><strong>Angle:</strong> ${cell(growth.compliantAngle.headline)}</p>
+            <p class="mt-2 text-slate-500">${cell(growth.note)}</p>
+            <div class="mt-4 grid gap-2">
+              ${growth.channelPlan.map((channel) => `
+                <div class="rounded-lg border border-slate-200 p-3">
+                  <strong>${cell(channel.name)}</strong>
+                  <div class="text-slate-500">Intent: ${cell(channel.intent)} | Sim budget: $${cell(channel.monthlyBudget)} | Approval: ${channel.approvalRequired ? "Required" : "Not required"}</div>
+                </div>
+              `).join("")}
+            </div>
+          `;
+
+          retentionPlan.innerHTML = `
+            <p><strong>Lead count:</strong> ${cell(retention.leadSummary.count)}</p>
+            ${renderList(retention.segments.map((segment) => `${segment.id}: ${segment.action}`))}
+          `;
+        } catch (error) {
+          growthPlan.textContent = error.message || "Unable to load growth recommendations.";
+          retentionPlan.textContent = error.message || "Unable to load retention recommendations.";
+        }
+      }
+
+      async function loadKnowledge(token) {
+        try {
+          const response = await fetch("/api/knowledge/materials", {
+            headers: { Accept: "application/json", "X-Admin-Token": token }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error("Knowledge engine locked.");
+
+          const priorities = data.installPlan.slice(0, 5).map((item) => `${item.priority}. ${item.item}: ${item.action}`);
+          const stack = data.technologyStack.slice(0, 4).map((item) => `${item.layer}: ${item.needNow}`);
+          const compliance = data.complianceMaterials.slice(0, 4).map((item) => `${item.area}: ${item.engineRule}`);
+
+          knowledgePlan.innerHTML = `
+            <div class="grid gap-4 lg:grid-cols-3">
+              <div>
+                <p class="font-black text-slate-950">Install now</p>
+                ${renderList(priorities)}
+              </div>
+              <div>
+                <p class="font-black text-slate-950">Tech stack</p>
+                ${renderList(stack)}
+              </div>
+              <div>
+                <p class="font-black text-slate-950">Compliance gates</p>
+                ${renderList(compliance)}
+              </div>
+            </div>
+            <p class="mt-4 text-xs font-bold text-slate-500">${cell(data.notice)}</p>
+          `;
+        } catch (error) {
+          knowledgePlan.textContent = error.message || "Unable to load knowledge materials.";
+        }
+      }
+
+      function statusTone(status) {
+        if (status === "mvp-live" || status === "approved" || status === "complete") return "bg-emerald-50 text-emerald-800";
+        if (status === "waiting" || status === "verify") return "bg-amber-50 text-amber-800";
+        return "bg-slate-100 text-slate-800";
+      }
+
+      async function loadOps() {
+        try {
+          const response = await fetch("/api/ops/status", {
+            headers: { Accept: "application/json" }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error("Operating status unavailable.");
+
+          opsPlan.innerHTML = `
+            <p><strong>Position:</strong> ${cell(data.position)}</p>
+            <p class="mt-1 text-slate-500">${cell(data.benchmark)}</p>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <div class="rounded-lg bg-emerald-50 p-3 text-emerald-900"><strong>Demo/waitlist</strong><div>${cell(data.launchReadiness.demoWaitlist)}</div></div>
+              <div class="rounded-lg bg-amber-50 p-3 text-amber-900"><strong>Paid launch</strong><div>${cell(data.launchReadiness.paidPublicLaunch)}</div></div>
+              <div class="rounded-lg bg-amber-50 p-3 text-amber-900"><strong>Fintech prod</strong><div>${cell(data.launchReadiness.fintechProduction)}</div></div>
+            </div>
+            <p class="mt-3 text-xs font-bold text-slate-500">${cell(data.launchReadiness.reason)}</p>
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+              ${data.productLayers.map((layer) => `
+                <div class="rounded-lg border border-slate-200 p-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <strong>${cell(layer.name)}</strong>
+                    <span class="rounded-full px-2 py-1 text-xs font-black ${statusTone(layer.status)}">${cell(layer.status)}</span>
+                  </div>
+                  <p class="mt-2 text-slate-600">${cell(layer.customerValue)}</p>
+                  <p class="mt-2 text-xs font-bold text-slate-500">${cell(layer.nextBuild)}</p>
+                </div>
+              `).join("")}
+            </div>
+            <p class="mt-5 font-black text-slate-950">Benchmark gaps</p>
+            ${renderList(data.benchmarkFindings.map((item) => `${item.competitor}: ${item.gap} CV counter: ${item.cvCounter}`))}
+            <p class="mt-5 font-black text-slate-950">Launch gates</p>
+            ${renderList(data.launchGates.map((gate) => `${gate.name} | ${gate.status}: ${gate.detail}`))}
+            <p class="mt-5 font-black text-slate-950">Next actions</p>
+            ${renderList(data.nextActions)}
+          `;
+        } catch (error) {
+          opsPlan.textContent = error.message || "Unable to load operating status.";
+        }
+      }
+
+      function renderDebug(scan) {
+        const failed = (scan.checks || []).filter((item) => !item.ok).slice(0, 8);
+        debugPlan.innerHTML = `
+          <div class="grid gap-3 sm:grid-cols-4">
+            <div class="rounded-lg bg-slate-50 p-3"><strong>Status</strong><div>${cell(scan.status)}</div></div>
+            <div class="rounded-lg bg-slate-50 p-3"><strong>Grade</strong><div>${cell(scan.grade)}</div></div>
+            <div class="rounded-lg bg-slate-50 p-3"><strong>Checks</strong><div>${cell(scan.summary.checks)}</div></div>
+            <div class="rounded-lg bg-slate-50 p-3"><strong>Failed</strong><div>${cell(scan.summary.failed)}</div></div>
+          </div>
+          <p class="mt-4 text-slate-500">Last run: ${cell(new Date(scan.ranAt).toLocaleString())}</p>
+          ${failed.length ? renderList(failed.map((item) => `${item.severity} | ${item.area}: ${item.fix}`)) : "<p class=\"mt-4 font-black text-emerald-700\">No active scanner failures.</p>"}
+        `;
+      }
+
+      async function loadDebug(token) {
+        try {
+          const response = await fetch("/api/debug/latest", {
+            headers: { Accept: "application/json", "X-Admin-Token": token }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error("Debug scanner locked.");
+          if (!data.exists) {
+            debugPlan.textContent = "No debug scan has run yet.";
+            return;
+          }
+          renderDebug(data.scan);
+        } catch (error) {
+          debugPlan.textContent = error.message || "Unable to load debug scanner.";
+        }
+      }
+
+      async function runDebugScan(token) {
+        debugPlan.textContent = "Running scanner...";
+        try {
+          const response = await fetch("/api/debug/run", {
+            method: "POST",
+            headers: { Accept: "application/json", "X-Admin-Token": token }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error("Debug scanner failed.");
+          renderDebug(data);
+        } catch (error) {
+          debugPlan.textContent = error.message || "Unable to run debug scanner.";
+        }
+      }
+
+      saveToken.addEventListener("click", () => {
+        sessionStorage.setItem("creditVivoAdminToken", adminToken.value.trim());
+        adminToken.value = "";
+        loadLeads();
+      });
+
+      clearToken.addEventListener("click", () => {
+        sessionStorage.removeItem("creditVivoAdminToken");
+        leadRows.innerHTML = "";
+        leadCount.textContent = "0";
+        loadLeads();
+      });
+
+      refreshGrowth.addEventListener("click", () => {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        if (token) loadGrowth(token);
+      });
+
+      refreshKnowledge.addEventListener("click", () => {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        if (token) loadKnowledge(token);
+      });
+
+      refreshOps.addEventListener("click", loadOps);
+
+      refreshDebug.addEventListener("click", () => {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        if (token) loadDebug(token);
+      });
+
+      runDebug.addEventListener("click", () => {
+        const token = sessionStorage.getItem("creditVivoAdminToken") || "";
+        if (token) runDebugScan(token);
+      });
+
+      loadLeads();
+      loadOps();
+    </script>
+  </body>
+</html>

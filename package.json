@@ -1,0 +1,28 @@
+{
+  "name": "credit-vivo-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "start:prod": "set NODE_ENV=production&& node server.js",
+    "check": "node --check server.js",
+    "debug:scan": "node scripts/debug-scan.js",
+    "test:smoke": "node tests/smoke-security.js",
+    "test:customers": "node tests/customer-scenarios.js",
+    "test:strategy": "node tests/strategic-intelligence-report.js",
+    "test:business": "node tests/business-horizon-analysis.js",
+    "test:failover": "node tests/failover-scenarios.js",
+    "test:lawyer-ai": "node tests/lawyer-ai-audit.js",
+    "test:knowledge": "node tests/knowledge-engine-audit.js",
+    "test:quality": "node tests/web-quality-audit.js",
+    "test:security-baseline": "node tests/security-baseline-audit.js",
+    "test:breach-audit": "node tests/security-breach-audit.js",
+    "test:workflow-api": "node tests/workflow-api-smoke.js",
+    "test:debug": "node tests/debug-engine-audit.js",
+    "test:load": "node tests/load-benchmark.js",
+    "test:competitors": "node tests/competitor-benchmark-report.js",
+    "test:ceo-ai": "node tests/ceo-ai-audit.js",
+    "test:benchmarks": "node tests/run-benchmarks.js"
+  }
+}

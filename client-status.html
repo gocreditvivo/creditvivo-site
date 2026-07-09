@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credit Vivo | Client Status</title>
+    <meta name="description" content="Credit Vivo client workflow status preview." />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      * { letter-spacing: 0 !important; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-950">
+    <main class="mx-auto max-w-4xl px-5 py-8">
+      <header class="rounded-lg bg-slate-950 p-6 text-white">
+        <p class="text-sm font-black uppercase text-blue-300">Credit Vivo</p>
+        <h1 class="mt-2 text-3xl font-black">Client Status</h1>
+        <p class="mt-3 max-w-2xl text-sm font-bold leading-6 text-slate-300">
+          This page shows safe workflow status only. Do not upload or paste sensitive documents here.
+        </p>
+      </header>
+
+      <section id="statusPanel" class="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+        <p class="text-sm font-black text-slate-500">Loading status...</p>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
+        <h2 class="text-lg font-black text-amber-950">Privacy reminder</h2>
+        <p class="mt-2 text-sm font-bold leading-6 text-amber-950">
+          Do not send Social Security numbers, bureau passwords, IDs, full account numbers, or credit report files through ordinary text or email.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const panel = document.querySelector("#statusPanel");
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id") || "";
+
+      function cell(value) {
+        return String(value || "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+
+      function stageLabel(stage) {
+        return String(stage || "")
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
+      }
+
+      function renderStatus(workflow) {
+        panel.innerHTML = `
+          <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-black uppercase text-blue-600">Goal</p>
+              <h2 class="mt-2 text-2xl font-black">${cell(workflow.goal)}</h2>
+              <p class="mt-2 text-sm font-bold text-slate-600">For ${cell(workflow.name)}</p>
+            </div>
+            <span class="rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">${cell(stageLabel(workflow.stage))}</span>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <div class="rounded-lg bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Next step</p>
+              <p class="mt-2 text-sm font-bold leading-6 text-slate-800">${cell(workflow.next)}</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Due / review date</p>
+              <p class="mt-2 text-sm font-bold leading-6 text-slate-800">${cell(workflow.due || "To be scheduled")}</p>
+            </div>
+          </div>
+
+          <div class="mt-6 rounded-lg border border-slate-200 p-4">
+            <p class="text-xs font-black uppercase text-slate-500">Still needed</p>
+            ${
+              workflow.missing && workflow.missing.length
+                ? `<ul class="mt-3 grid gap-2">${workflow.missing.map((item) => `<li class="rounded-lg bg-slate-50 p-3 text-sm font-bold">${cell(item)}</li>`).join("")}</ul>`
+                : `<p class="mt-2 text-sm font-bold text-emerald-700">No additional documents are marked as needed right now.</p>`
+            }
+          </div>
+
+          <div class="mt-6 rounded-lg bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-950">
+            ${cell(workflow.expectations)}
+          </div>
+        `;
+      }
+
+      async function loadStatus() {
+        if (!id) {
+          panel.innerHTML = "<p class='text-sm font-bold text-rose-700'>Missing workflow ID.</p>";
+          return;
+        }
+        try {
+          const response = await fetch(`/api/client/workflows/${encodeURIComponent(id)}`, {
+            headers: { Accept: "application/json" }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to load status."]).join(" "));
+          renderStatus(data.workflow);
+        } catch (error) {
+          panel.innerHTML = `<p class="text-sm font-bold text-rose-700">${cell(error.message)}</p>`;
+        }
+      }
+
+      loadStatus();
+    </script>
+  </body>
+</html>

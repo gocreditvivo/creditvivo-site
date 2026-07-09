@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MiniTim | Credit Vivo Founder AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      * { letter-spacing: 0 !important; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-white">
+    <main class="mx-auto grid min-h-screen max-w-7xl gap-6 px-5 py-6 lg:grid-cols-[320px_1fr]">
+      <aside class="rounded-lg border border-white/10 bg-white/5 p-5">
+        <div class="flex items-center gap-3">
+          <div class="grid h-11 w-11 place-items-center rounded-lg bg-emerald-400 font-black text-slate-950">CV</div>
+          <div>
+            <p class="text-sm font-black uppercase text-emerald-300">Founder only</p>
+            <h1 class="text-2xl font-black">MiniTim</h1>
+          </div>
+        </div>
+
+        <section class="mt-6 rounded-lg bg-slate-900 p-4">
+          <label class="grid gap-2 text-sm font-black text-slate-300">
+            Founder token
+            <input id="adminToken" type="password" class="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-300" placeholder="ADMIN_TOKEN" />
+          </label>
+          <label class="mt-3 grid gap-2 text-sm font-black text-slate-300">
+            Founder phone
+            <input id="founderPhone" inputmode="tel" autocomplete="tel" class="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-300" placeholder="Founder phone only" />
+          </label>
+          <label class="mt-3 grid gap-2 text-sm font-black text-slate-300">
+            Founder device key
+            <input id="deviceKey" type="password" class="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-300" placeholder="FOUNDER_DEVICE_KEY" />
+          </label>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <button id="saveToken" class="rounded-lg bg-emerald-400 px-3 py-3 text-sm font-black text-slate-950">Unlock MiniTim</button>
+            <button id="clearToken" class="rounded-lg border border-white/10 px-3 py-3 text-sm font-black text-white">Clear</button>
+          </div>
+          <p class="mt-3 text-xs font-bold text-slate-400">MVP lock: founder token + founder phone hash + this PC's device key.</p>
+        </section>
+
+        <section class="mt-5 grid gap-3 text-sm">
+          <div class="rounded-lg border border-white/10 p-4">
+            <p class="font-black text-slate-400">Mode</p>
+            <p id="mode" class="mt-1 font-black">Locked</p>
+          </div>
+          <div class="rounded-lg border border-white/10 p-4">
+            <p class="font-black text-slate-400">AI provider</p>
+            <p id="provider" class="mt-1 font-black">Locked</p>
+          </div>
+          <div class="rounded-lg border border-white/10 p-4">
+            <p class="font-black text-slate-400">Pending approvals</p>
+            <p id="pendingCount" class="mt-1 text-3xl font-black">0</p>
+          </div>
+          <div class="rounded-lg border border-white/10 p-4">
+            <p class="font-black text-slate-400">Audit hash</p>
+            <p id="auditHash" class="mt-1 break-all text-xs text-slate-300">None</p>
+          </div>
+        </section>
+
+        <nav class="mt-5 grid gap-2 text-sm font-black">
+          <a class="rounded-lg border border-white/10 px-4 py-3 hover:border-emerald-300" href="/admin.html">Admin dashboard</a>
+          <a class="rounded-lg border border-white/10 px-4 py-3 hover:border-emerald-300" href="/">Public site</a>
+        </nav>
+      </aside>
+
+      <section class="grid gap-6">
+        <div class="rounded-lg border border-white/10 bg-white p-5 text-slate-950">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-black uppercase text-emerald-700">Bank-grade operating principle</p>
+              <h2 class="mt-1 text-3xl font-black">MiniTim advises fast. Execution waits for you.</h2>
+            </div>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <button id="pingPhone" class="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700">Ping phone</button>
+              <button id="refreshStatus" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700">Refresh</button>
+            </div>
+          </div>
+          <div id="guardrails" class="mt-5 grid gap-2 sm:grid-cols-2"></div>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <section class="rounded-lg border border-white/10 bg-white p-5 text-slate-950">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-black uppercase text-blue-700">Founder chat</p>
+                <h2 class="text-2xl font-black">Ask MiniTim</h2>
+              </div>
+              <span id="chatState" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">Locked</span>
+            </div>
+            <div id="chatLog" class="mt-5 grid max-h-[520px] gap-3 overflow-y-auto rounded-lg bg-slate-50 p-4 text-sm"></div>
+            <div class="mt-4 grid gap-3">
+              <textarea id="message" rows="4" class="resize-none rounded-lg border border-slate-200 p-4 text-sm outline-none focus:border-blue-600" placeholder="Example: Build a launch plan for Credit Vivo, but do not send emails or spend money without my approval."></textarea>
+              <button id="sendMessage" class="rounded-lg bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700">Send to MiniTim</button>
+            </div>
+          </section>
+
+          <aside class="rounded-lg border border-white/10 bg-white p-5 text-slate-950">
+            <p class="text-sm font-black uppercase text-rose-700">Approval queue</p>
+            <h2 class="mt-1 text-2xl font-black">Founder Decisions</h2>
+            <div id="actions" class="mt-4 grid gap-3 text-sm"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const adminToken = document.querySelector("#adminToken");
+      const founderPhone = document.querySelector("#founderPhone");
+      const deviceKey = document.querySelector("#deviceKey");
+      const saveToken = document.querySelector("#saveToken");
+      const clearToken = document.querySelector("#clearToken");
+      const refreshStatus = document.querySelector("#refreshStatus");
+      const pingPhone = document.querySelector("#pingPhone");
+      const sendMessage = document.querySelector("#sendMessage");
+      const message = document.querySelector("#message");
+      const mode = document.querySelector("#mode");
+      const provider = document.querySelector("#provider");
+      const pendingCount = document.querySelector("#pendingCount");
+      const auditHash = document.querySelector("#auditHash");
+      const guardrails = document.querySelector("#guardrails");
+      const chatLog = document.querySelector("#chatLog");
+      const chatState = document.querySelector("#chatState");
+      const actions = document.querySelector("#actions");
+
+      function token() {
+        return sessionStorage.getItem("creditVivoAdminToken") || "";
+      }
+
+      function founderPhoneLast4() {
+        return sessionStorage.getItem("creditVivoFounderPhoneLast4") || "";
+      }
+
+      function founderPhoneHash() {
+        return sessionStorage.getItem("creditVivoFounderPhoneSha256") || "";
+      }
+
+      function founderDeviceKey() {
+        return sessionStorage.getItem("creditVivoFounderDeviceKey") || "";
+      }
+
+      function normalizePhone(value) {
+        const digits = String(value || "").replace(/\D/g, "");
+        const tenDigit = digits.length > 10 ? digits.slice(-10) : digits;
+        return tenDigit.length === 10 ? `+1${tenDigit}` : "";
+      }
+
+      async function sha256Hex(value) {
+        const bytes = new TextEncoder().encode(value);
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      function esc(value) {
+        return String(value || "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+
+      function addChat(role, text) {
+        const isFounder = role === "Founder";
+        const node = document.createElement("div");
+        node.className = `rounded-lg p-4 ${isFounder ? "bg-blue-50" : "bg-white border border-slate-200"}`;
+        node.innerHTML = `<p class="text-xs font-black uppercase ${isFounder ? "text-blue-700" : "text-emerald-700"}">${role}</p><div class="mt-2 whitespace-pre-wrap">${esc(text)}</div>`;
+        chatLog.appendChild(node);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      function renderActions(items) {
+        pendingCount.textContent = String(items.length);
+        actions.innerHTML = items.length ? items.map((item) => `
+          <article class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-black uppercase text-rose-700">${esc(item.risk)} risk</p>
+                <h3 class="mt-1 font-black">${esc(item.title)}</h3>
+              </div>
+              <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-black text-amber-800">Pending</span>
+            </div>
+            <p class="mt-2 text-slate-600">${esc(item.description)}</p>
+            <p class="mt-3 break-all text-xs text-slate-400">${esc(item.id)}</p>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button data-decision="approve" data-id="${esc(item.id)}" class="rounded-lg bg-emerald-600 px-3 py-2 font-black text-white">Approve</button>
+              <button data-decision="reject" data-id="${esc(item.id)}" class="rounded-lg border border-slate-200 px-3 py-2 font-black">Reject</button>
+            </div>
+          </article>
+        `).join("") : "<p class=\"rounded-lg bg-slate-50 p-4 text-slate-600\">No pending founder approvals.</p>";
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Admin-Token": token(),
+            "X-Founder-Phone-Last4": founderPhoneLast4(),
+            "X-Founder-Phone-Sha256": founderPhoneHash(),
+            "X-Founder-Device-Key": founderDeviceKey(),
+            ...(options.headers || {})
+          }
+        });
+        const data = await response.json();
+        if (!response.ok || data.ok === false) throw new Error((data.errors || ["Request failed."]).join(" "));
+        return data;
+      }
+
+      async function loadStatus() {
+        if (!token() || (!founderPhoneHash() && !founderPhoneLast4()) || !founderDeviceKey()) {
+          mode.textContent = "Locked";
+          provider.textContent = "Locked";
+          chatState.textContent = "Locked";
+          guardrails.innerHTML = "<p class=\"rounded-lg bg-slate-50 p-4 text-slate-600\">Enter founder token, founder phone, and this PC's device key to unlock MiniTim.</p>";
+          renderActions([]);
+          return;
+        }
+        const data = await api("/api/ceo/status");
+        mode.textContent = data.autonomyPolicy;
+        provider.textContent = data.aiProvider === "openai-responses" ? `OpenAI ${data.aiModel}` : "Rules fallback";
+        chatState.textContent = data.assistantName || "MiniTim";
+        auditHash.textContent = data.latestAuditHash || "None";
+        const smsLine = data.sms?.configured
+          ? `SMS ready: ${data.sms.fromNumber} to ${data.sms.founderPhone}`
+          : "SMS not configured";
+        guardrails.innerHTML = [
+          `<div class="rounded-lg bg-emerald-50 p-3 text-sm font-black text-emerald-800">${esc(smsLine)}</div>`,
+          ...data.guards.map((item) => `<div class="rounded-lg bg-slate-50 p-3 text-sm font-bold">${esc(item)}</div>`)
+        ].join("");
+        renderActions(data.pendingActions || []);
+      }
+
+      saveToken.addEventListener("click", async () => {
+        const normalizedPhone = normalizePhone(founderPhone.value);
+        sessionStorage.setItem("creditVivoAdminToken", adminToken.value.trim());
+        sessionStorage.setItem("creditVivoFounderPhoneLast4", normalizedPhone.slice(-4));
+        sessionStorage.setItem("creditVivoFounderPhoneSha256", normalizedPhone ? await sha256Hex(normalizedPhone) : "");
+        sessionStorage.setItem("creditVivoFounderDeviceKey", deviceKey.value.trim());
+        adminToken.value = "";
+        founderPhone.value = "";
+        deviceKey.value = "";
+        loadStatus().catch((error) => addChat("System", error.message));
+      });
+
+      clearToken.addEventListener("click", () => {
+        sessionStorage.removeItem("creditVivoAdminToken");
+        sessionStorage.removeItem("creditVivoFounderPhoneLast4");
+        sessionStorage.removeItem("creditVivoFounderDeviceKey");
+        loadStatus();
+      });
+
+      refreshStatus.addEventListener("click", () => loadStatus().catch((error) => addChat("System", error.message)));
+
+      pingPhone.addEventListener("click", async () => {
+        try {
+          const data = await api("/api/ceo/ping-phone", {
+            method: "POST",
+            body: JSON.stringify({ message: "MiniTim test: Credit Vivo founder SMS is connected." })
+          });
+          addChat("MiniTim", `Phone ping sent. Twilio status: ${data.status || "queued"}.`);
+          await loadStatus();
+        } catch (error) {
+          addChat("System", error.message);
+        }
+      });
+
+      sendMessage.addEventListener("click", async () => {
+        const text = message.value.trim();
+        if (!text) return;
+        message.value = "";
+        addChat("Founder", text);
+        try {
+          const data = await api("/api/ceo/chat", { method: "POST", body: JSON.stringify({ message: text }) });
+          addChat(data.assistantName || "MiniTim", `${data.summary}\n\n${data.answer.join("\n")}\n\nNext:\n- ${data.nextActions.join("\n- ")}`);
+          await loadStatus();
+        } catch (error) {
+          addChat("System", error.message);
+        }
+      });
+
+      actions.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-id]");
+        if (!button) return;
+        try {
+          await api(`/api/ceo/actions/${button.dataset.id}`, {
+            method: "POST",
+            body: JSON.stringify({ decision: button.dataset.decision })
+          });
+          await loadStatus();
+        } catch (error) {
+          addChat("System", error.message);
+        }
+      });
+
+      loadStatus().catch((error) => addChat("System", error.message));
+    </script>
+  </body>
+</html>

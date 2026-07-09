@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credit Vivo Admin | Client Workflow</title>
+    <meta
+      name="description"
+      content="Credit Vivo client workflow queue prototype for intake, document review, action plans, active work, and monthly follow-up."
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              vivo: {
+                blue: "#2563eb",
+                ink: "#111827",
+                mint: "#10b981",
+                soft: "#f8fafc"
+              }
+            }
+          }
+        }
+      };
+    </script>
+    <style>
+      * { letter-spacing: 0 !important; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      button:disabled { cursor: not-allowed; opacity: 0.6; }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-950">
+    <main class="mx-auto max-w-7xl px-5 py-8">
+      <header class="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-sm font-black uppercase text-blue-600">Credit Vivo admin</p>
+          <h1 class="mt-2 text-3xl font-black">Client Workflow Queue</h1>
+          <p class="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-600">
+            Track each client from intake to document review, evidence-based action plan, active workflow, and monthly follow-up.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <a href="/admin.html" class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black hover:border-blue-600">Lead admin</a>
+          <a href="/CREDITVIVO_CLIENT_WORKFLOW.md" class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black hover:border-blue-600">Workflow doc</a>
+          <a href="/" class="rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-blue-600">View site</a>
+        </div>
+      </header>
+
+      <section class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
+        <h2 class="text-lg font-black text-amber-950">Compliance guardrail</h2>
+        <p class="mt-2 text-sm font-bold leading-6 text-amber-950">
+          Use this queue to organize facts and next steps. Do not promise score increases, guaranteed deletions, approval outcomes, or removal of accurate negative information. Send sensitive documents only through a secure portal when built.
+        </p>
+      </section>
+
+      <section id="tokenPanel" class="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-5">
+        <label class="grid gap-2 text-sm font-black text-slate-700">
+          Admin token
+          <input id="adminToken" type="password" class="rounded-lg border border-blue-200 bg-white px-4 py-3 font-medium outline-none focus:border-blue-600" placeholder="Enter admin token" />
+        </label>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+          <button id="saveToken" class="rounded-lg bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">Unlock workflow API</button>
+          <button id="clearToken" class="rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-black text-slate-900 hover:border-blue-600">Clear token</button>
+        </div>
+        <p id="apiStatus" class="mt-3 text-sm font-bold text-blue-900">Without a token, this page shows local demo records only.</p>
+      </section>
+
+      <section class="mt-6 grid gap-4 md:grid-cols-4">
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Active clients</p>
+          <p id="activeCount" class="mt-2 text-4xl font-black">0</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Need documents</p>
+          <p id="docsCount" class="mt-2 text-4xl font-black">0</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Attorney review</p>
+          <p id="attorneyCount" class="mt-2 text-4xl font-black">0</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black text-slate-500">Follow-ups due</p>
+          <p id="followCount" class="mt-2 text-4xl font-black">0</p>
+        </div>
+      </section>
+
+      <section class="mt-6 grid gap-4 lg:grid-cols-[280px_1fr]">
+        <aside class="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 class="text-lg font-black">Filters</h2>
+          <label class="mt-4 grid gap-2 text-sm font-black text-slate-700">
+            Stage
+            <select id="stageFilter" class="rounded-lg border border-slate-200 bg-white px-3 py-3 font-bold outline-none focus:border-blue-600">
+              <option value="all">All stages</option>
+              <option value="intake-review">Intake review</option>
+              <option value="waiting-client-docs">Waiting client docs</option>
+              <option value="analysis-in-progress">Analysis in progress</option>
+              <option value="action-plan-ready">Action plan ready</option>
+              <option value="waiting-response">Waiting response</option>
+              <option value="monthly-follow-up">Monthly follow-up</option>
+              <option value="attorney-review-lead">Attorney review lead</option>
+            </select>
+          </label>
+
+          <label class="mt-4 grid gap-2 text-sm font-black text-slate-700">
+            Search
+            <input id="searchBox" class="rounded-lg border border-slate-200 bg-white px-3 py-3 font-bold outline-none focus:border-blue-600" placeholder="Name, goal, task" />
+          </label>
+
+          <div class="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-600">
+            <p class="font-black text-slate-950">Rule:</p>
+            <p>Every client needs a stage, next action, due date, owner, and safe client message.</p>
+          </div>
+        </aside>
+
+        <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div class="border-b border-slate-200 p-5">
+            <h2 class="text-xl font-black">Client queue</h2>
+            <p class="mt-1 text-sm font-bold text-slate-600">Admin API records when unlocked; safe demo records when locked. Do not store real sensitive documents here.</p>
+          </div>
+          <div id="clientList" class="divide-y divide-slate-200"></div>
+          <p id="emptyState" class="hidden p-6 text-sm font-bold text-slate-600">No clients match this filter.</p>
+        </section>
+      </section>
+
+      <section class="mt-6 grid gap-4 lg:grid-cols-2">
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black uppercase text-emerald-600">Safe monthly update</p>
+          <h2 class="mt-2 text-2xl font-black">Client Message Preview</h2>
+          <div id="messagePreview" class="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-700">
+            Select a client to generate a safe monthly update.
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+          <p class="text-sm font-black uppercase text-indigo-600">Next build</p>
+          <h2 class="mt-2 text-2xl font-black">Software Roadmap</h2>
+          <ol class="mt-5 grid gap-3 text-sm font-bold leading-6 text-slate-700">
+            <li>1. Convert public leads into workflow records.</li>
+            <li>2. Add task owner, due dates, and status history.</li>
+            <li>3. Add secure upload before collecting credit reports or IDs.</li>
+            <li>4. Add evidence-bound AI summaries with human review.</li>
+            <li>5. Add monthly client update generator and audit log.</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      let clients = [
+        {
+          name: "Maria L.",
+          goal: "Auto loan in 60 days",
+          stage: "waiting-client-docs",
+          track: "repair-review",
+          risk: "normal",
+          owner: "Tim",
+          due: "2026-07-12",
+          next: "Request Experian report and collection letter.",
+          docs: ["Equifax report", "TransUnion report"],
+          missing: ["Experian report", "collection letter"],
+          issues: "4 possible reporting issues need evidence review",
+          contact: "Text"
+        },
+        {
+          name: "Derrick P.",
+          goal: "Apartment approval",
+          stage: "analysis-in-progress",
+          track: "prepare-track",
+          risk: "normal",
+          owner: "Reviewer",
+          due: "2026-07-10",
+          next: "Separate accurate negative items from possible duplicate collection reporting.",
+          docs: ["Three-bureau report", "denial letter"],
+          missing: [],
+          issues: "1 duplicate collection lead, 2 build-plan items",
+          contact: "Email"
+        },
+        {
+          name: "Samantha R.",
+          goal: "Unknown account / fraud concern",
+          stage: "attorney-review-lead",
+          track: "protect-track",
+          risk: "attorney-review",
+          owner: "Founder",
+          due: "2026-07-09",
+          next: "Prepare attorney eligibility packet; do not give legal conclusion.",
+          docs: ["Credit report", "FTC identity theft report"],
+          missing: ["Creditor response letter"],
+          issues: "Identity theft and repeated verified reporting concern",
+          contact: "Phone"
+        },
+        {
+          name: "Kevin T.",
+          goal: "Mortgage readiness",
+          stage: "monthly-follow-up",
+          track: "prepare-track",
+          risk: "normal",
+          owner: "Support",
+          due: "2026-07-08",
+          next: "Send monthly update and request new report snapshot.",
+          docs: ["Prior action plan", "utilization worksheet"],
+          missing: ["Updated report snapshot"],
+          issues: "Build plan and utilization follow-up",
+          contact: "Email"
+        },
+        {
+          name: "Alicia B.",
+          goal: "Review possible outdated items",
+          stage: "action-plan-ready",
+          track: "repair-review",
+          risk: "normal",
+          owner: "Tim",
+          due: "2026-07-11",
+          next: "Review action plan with client before any dispute drafting.",
+          docs: ["Three-bureau report", "payment proof"],
+          missing: [],
+          issues: "2 possible outdated/incomplete reporting items",
+          contact: "Text"
+        }
+      ];
+
+      const stageLabel = {
+        "intake-review": "Intake review",
+        "waiting-client-docs": "Waiting client docs",
+        "analysis-in-progress": "Analysis in progress",
+        "action-plan-ready": "Action plan ready",
+        "waiting-response": "Waiting response",
+        "monthly-follow-up": "Monthly follow-up",
+        "attorney-review-lead": "Attorney review lead"
+      };
+
+      const riskClass = {
+        normal: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+        high: "bg-amber-50 text-amber-800 ring-amber-100",
+        "attorney-review": "bg-rose-50 text-rose-700 ring-rose-100"
+      };
+
+      const list = document.querySelector("#clientList");
+      const stageFilter = document.querySelector("#stageFilter");
+      const searchBox = document.querySelector("#searchBox");
+      const emptyState = document.querySelector("#emptyState");
+      const messagePreview = document.querySelector("#messagePreview");
+      const tokenPanel = document.querySelector("#tokenPanel");
+      const adminToken = document.querySelector("#adminToken");
+      const saveToken = document.querySelector("#saveToken");
+      const clearToken = document.querySelector("#clearToken");
+      const apiStatus = document.querySelector("#apiStatus");
+
+      function getToken() {
+        return sessionStorage.getItem("creditVivoAdminToken") || "";
+      }
+
+      function adminHeaders() {
+        return {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Admin-Token": getToken()
+        };
+      }
+
+      function pill(text, classes) {
+        return `<span class="inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${classes}">${text}</span>`;
+      }
+
+      function safeMessage(client) {
+        return [
+          `Quick CreditVivo update for ${client.name}:`,
+          `Current stage: ${stageLabel[client.stage] || client.stage}.`,
+          `Next step: ${client.next}`,
+          client.missing.length ? `We still need: ${client.missing.join(", ")}.` : "We do not need additional documents from you right now.",
+          "CreditVivo reviews possible inaccurate, incomplete, outdated, duplicate, unverifiable, mixed-file, or fraud-related reporting. Results are not guaranteed and depend on the facts, evidence, and bureau/furnisher investigation."
+        ].join(" ");
+      }
+
+      function render() {
+        const selectedStage = stageFilter.value;
+        const term = searchBox.value.trim().toLowerCase();
+        const filtered = clients.filter((client) => {
+          const stageMatch = selectedStage === "all" || client.stage === selectedStage;
+          const haystack = [client.name, client.goal, client.stage, client.track, client.next, client.issues].join(" ").toLowerCase();
+          return stageMatch && (!term || haystack.includes(term));
+        });
+
+        list.innerHTML = filtered.map((client, index) => `
+          <article class="grid gap-4 p-5 lg:grid-cols-[1fr_260px]">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="mr-2 text-xl font-black">${client.name}</h3>
+                ${pill(stageLabel[client.stage] || client.stage, "bg-blue-50 text-blue-700 ring-blue-100")}
+                ${pill(client.risk, riskClass[client.risk] || riskClass.normal)}
+              </div>
+              <p class="mt-2 text-sm font-bold text-slate-600">${client.goal} · ${client.track} · prefers ${client.contact}</p>
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                <div class="rounded-lg bg-slate-50 p-4">
+                  <p class="text-xs font-black uppercase text-slate-500">Next action</p>
+                  <p class="mt-2 text-sm font-bold leading-6 text-slate-800">${client.next}</p>
+                </div>
+                <div class="rounded-lg bg-slate-50 p-4">
+                  <p class="text-xs font-black uppercase text-slate-500">Issue summary</p>
+                  <p class="mt-2 text-sm font-bold leading-6 text-slate-800">${client.issues}</p>
+                </div>
+              </div>
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                <p class="text-sm font-bold text-slate-600"><span class="font-black text-slate-950">Received:</span> ${client.docs.length ? client.docs.join(", ") : "None yet"}</p>
+                <p class="text-sm font-bold text-slate-600"><span class="font-black text-slate-950">Missing:</span> ${client.missing.length ? client.missing.join(", ") : "Nothing currently"}</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="text-sm font-black text-slate-500">Owner</p>
+              <p class="mt-1 text-lg font-black">${client.owner}</p>
+              <p class="mt-4 text-sm font-black text-slate-500">Due date</p>
+              <p class="mt-1 text-lg font-black">${client.due}</p>
+              <div class="mt-5 grid gap-2">
+                <button class="preview rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-blue-600" data-id="${client.id || ""}" data-index="${index}" type="button">Generate update</button>
+                <button class="complete rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black hover:border-emerald-600" data-id="${client.id || ""}" data-index="${index}" type="button">Mark next action done</button>
+              </div>
+            </div>
+          </article>
+        `).join("");
+
+        emptyState.classList.toggle("hidden", filtered.length !== 0);
+        document.querySelector("#activeCount").textContent = clients.length;
+        document.querySelector("#docsCount").textContent = clients.filter((client) => client.missing.length).length;
+        document.querySelector("#attorneyCount").textContent = clients.filter((client) => client.stage === "attorney-review-lead").length;
+        document.querySelector("#followCount").textContent = clients.filter((client) => client.stage === "monthly-follow-up").length;
+
+        list.querySelectorAll(".preview").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const client = filtered[Number(button.dataset.index)];
+            if (getToken() && button.dataset.id) {
+              try {
+                const response = await fetch(`/api/workflows/${button.dataset.id}/safe-update`, {
+                  headers: adminHeaders()
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to generate update."]).join(" "));
+                messagePreview.textContent = data.message;
+                return;
+              } catch (error) {
+                messagePreview.textContent = `${error.message} Showing local safe preview instead. ${safeMessage(client)}`;
+                return;
+              }
+            }
+            messagePreview.textContent = safeMessage(client);
+          });
+        });
+
+        list.querySelectorAll(".complete").forEach((button) => {
+          button.addEventListener("click", async () => {
+            if (getToken() && button.dataset.id) {
+              try {
+                const response = await fetch(`/api/workflows/${button.dataset.id}/complete`, {
+                  method: "POST",
+                  headers: adminHeaders(),
+                  body: JSON.stringify({})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to complete action."]).join(" "));
+                await loadWorkflows();
+                messagePreview.textContent = "Next action marked complete. Set the next workflow action before contacting the client.";
+                return;
+              } catch (error) {
+                messagePreview.textContent = error.message;
+                return;
+              }
+            }
+            button.textContent = "Completed";
+            button.disabled = true;
+            button.classList.add("border-emerald-600", "text-emerald-700");
+          });
+        });
+      }
+
+      async function loadWorkflows() {
+        const token = getToken();
+        tokenPanel.classList.toggle("hidden", Boolean(token));
+        if (!token) {
+          apiStatus.textContent = "Without a token, this page shows local demo records only.";
+          render();
+          return;
+        }
+        try {
+          const response = await fetch("/api/workflows", { headers: adminHeaders() });
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error((data.errors || ["Unable to load workflow records."]).join(" "));
+          clients = data.workflows;
+          apiStatus.textContent = `Workflow API unlocked. Loaded ${data.count} records.`;
+          render();
+        } catch (error) {
+          apiStatus.textContent = error.message;
+          render();
+        }
+      }
+
+      stageFilter.addEventListener("change", render);
+      searchBox.addEventListener("input", render);
+      saveToken.addEventListener("click", () => {
+        sessionStorage.setItem("creditVivoAdminToken", adminToken.value.trim());
+        adminToken.value = "";
+        loadWorkflows();
+      });
+      clearToken.addEventListener("click", () => {
+        sessionStorage.removeItem("creditVivoAdminToken");
+        loadWorkflows();
+      });
+      loadWorkflows();
+    </script>
+  </body>
+</html>
