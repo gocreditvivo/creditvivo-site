@@ -1,6 +1,7 @@
-﻿import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, FileText, Lock, MessageSquare } from 'lucide-react';
-import { syntheticCustomer, syntheticTradelines, syntheticWorkflow } from '../lib/processOnlyTestData';
+import { dummyCreditReports, getDummyReport, type DummyTradeline } from '../lib/dummyCreditReports';
+import { syntheticWorkflow } from '../lib/processOnlyTestData';
 import { getProcessOnlyBlock } from '../lib/processOnlyMode';
 
 const memberContent: Record<string, { title: string; eyebrow: string; body: string; labels: string[] }> = {
@@ -26,18 +27,56 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   return <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-3 text-base font-black text-slate-950">{title}</h2>{children}</section>;
 }
 
-function TradelineCards() {
+function ReportSelector({ selectedId }: { selectedId: string }) {
+  return (
+    <Card title="10 dummy customer reports">
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+        {dummyCreditReports.map((report, index) => (
+          <Link
+            key={report.id}
+            className={`rounded-lg border p-3 text-xs font-black ${report.id === selectedId ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+            to={`?case=${report.id}`}
+          >
+            {index + 1}. {report.persona}
+          </Link>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function ScoreSummary({ report }: { report: ReturnType<typeof getDummyReport> }) {
+  return (
+    <Card title="Score and case summary">
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200"><p className="text-xs font-black text-slate-500">Start</p><p className="text-3xl font-black text-slate-950">{report.score_start}</p></div>
+        <div className="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200"><p className="text-xs font-black text-slate-500">Current</p><p className="text-3xl font-black text-emerald-700">{report.score_current}</p></div>
+        <div className="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200"><p className="text-xs font-black text-slate-500">Goal</p><p className="text-3xl font-black text-slate-950">{report.score_goal}</p></div>
+        <div className="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200"><p className="text-xs font-black text-slate-500">Stage</p><p className="mt-2 text-sm font-black text-slate-900">{report.stage}</p></div>
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        {Object.entries(report.bureau_scores).map(([bureau, score]) => (
+          <div key={bureau} className="rounded-lg bg-white p-3 text-sm ring-1 ring-slate-200"><strong>{bureau}</strong>: {score}</div>
+        ))}
+      </div>
+      <p className="mt-4 text-sm leading-6 text-slate-700">{report.profile_summary}</p>
+      <p className="mt-2 rounded-md bg-amber-50 p-3 text-sm font-bold text-amber-900">{report.top_risk}</p>
+    </Card>
+  );
+}
+
+function TradelineCards({ tradelines }: { tradelines: DummyTradeline[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      {syntheticTradelines.map((item) => (
-        <article key={`${item.bureau}-${item.account_number_masked}`} className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{item.bureau}</p>
+      {tradelines.map((item) => (
+        <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{item.bureau} | {item.severity}</p>
           <h3 className="mt-2 text-sm font-black text-slate-950">{item.account_name}</h3>
           <p className="mt-1 text-xs text-slate-500">{item.account_type} | {item.account_number_masked}</p>
           <p className="mt-3 text-sm text-slate-700">{item.possible_issue}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <StatusPill>{item.status}</StatusPill>
-            <StatusPill>{item.risk_label}</StatusPill>
+            <StatusPill>{item.recommended_letter_type}</StatusPill>
           </div>
         </article>
       ))}
@@ -51,6 +90,7 @@ export default function MemberProcessPage({ view }: { view: string }) {
   const config = memberContent[currentView];
   if (!config) return <Navigate to="/member/dashboard" replace />;
   const uploadBlock = getProcessOnlyBlock('real_upload');
+  const selectedReport = getDummyReport(new URLSearchParams(location.search).get('case'));
 
   return (
     <div className="space-y-5">
@@ -61,16 +101,20 @@ export default function MemberProcessPage({ view }: { view: string }) {
         <div className="mt-4 flex flex-wrap gap-2">{config.labels.map((label) => <StatusPill key={label}>{label}</StatusPill>)}</div>
       </header>
 
+      <ReportSelector selectedId={selectedReport.id} />
+
       {['signup', 'login', 'dashboard'].includes(currentView) && (
         <Card title="Synthetic member profile">
           <div className="grid gap-3 text-sm md:grid-cols-3">
-            <p><strong>Name:</strong> {syntheticCustomer.display_name}</p>
-            <p><strong>Email:</strong> {syntheticCustomer.test_email}</p>
-            <p><strong>Status:</strong> {syntheticCustomer.member_status}</p>
-            <p className="md:col-span-3"><strong>Goal:</strong> {syntheticCustomer.goal}</p>
+            <p><strong>Name:</strong> {selectedReport.display_name}</p>
+            <p><strong>Email:</strong> {selectedReport.login_email}</p>
+            <p><strong>Status:</strong> {selectedReport.report_status}</p>
+            <p className="md:col-span-3"><strong>Profile:</strong> {selectedReport.persona}</p>
           </div>
         </Card>
       )}
+
+      <ScoreSummary report={selectedReport} />
 
       {currentView === 'upload' && (
         <Card title="Upload controls are visual only">
@@ -82,12 +126,12 @@ export default function MemberProcessPage({ view }: { view: string }) {
         </Card>
       )}
 
-      {['findings', 'negative-accounts', 'bureau-comparison', 'score-blockers', 'comeback-plan'].includes(currentView) && <TradelineCards />}
+      {['findings', 'negative-accounts', 'bureau-comparison', 'score-blockers', 'comeback-plan'].includes(currentView) && <TradelineCards tradelines={selectedReport.tradelines} />}
 
       {currentView === 'disputes' && (
         <div className="grid gap-4 md:grid-cols-2">
           <Card title="Draft letter preview">
-            <p className="text-sm leading-6 text-slate-700">DRAFT ONLY: Please investigate the accuracy and completeness of the synthetic account details shown in this test preview. This draft is not sent and is not legal advice.</p>
+            <p className="text-sm leading-6 text-slate-700">{selectedReport.draft_letter_preview}</p>
           </Card>
           <Card title="Approval and compliance state">
             <ul className="space-y-2 text-sm text-slate-700">
@@ -97,18 +141,24 @@ export default function MemberProcessPage({ view }: { view: string }) {
               <li><Lock className="mr-2 inline h-4 w-4 text-rose-600" /> Send status: {syntheticWorkflow.send_status}</li>
             </ul>
           </Card>
+          <Card title="Dispute test coverage">
+            <ul className="space-y-2 text-sm text-slate-700">{selectedReport.dispute_tests.map((test) => <li key={test}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{test}</li>)}</ul>
+          </Card>
+          <Card title="Internal email preview">
+            <p className="text-sm leading-6 text-slate-700">{selectedReport.email_preview}</p>
+          </Card>
         </div>
       )}
 
       {currentView === 'progress' && (
         <Card title="Process-only progress tracker">
-          <div className="grid gap-3 md:grid-cols-5">{['Draft ready', 'Customer approval simulated', 'Admin review required', 'Compliance blocked', 'Not sent'].map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>
+          <div className="grid gap-3 md:grid-cols-5">{selectedReport.tracking_stages.map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>
         </Card>
       )}
 
       {currentView === 'messages' && (
         <Card title="Message preview">
-          <p className="flex items-center gap-2 text-sm text-slate-700"><MessageSquare size={16} /> Credit Vivo: Your synthetic findings are ready for review. No email or SMS was sent.</p>
+          <p className="flex items-center gap-2 text-sm text-slate-700"><MessageSquare size={16} /> {selectedReport.email_preview}</p>
         </Card>
       )}
 
@@ -119,4 +169,3 @@ export default function MemberProcessPage({ view }: { view: string }) {
     </div>
   );
 }
-

@@ -11,8 +11,9 @@
                     "typecheck":  "tsc --noEmit -p tsconfig.app.json",
                     "test:uat":  "node tools/uat-process-only-check.mjs",
                     "validate:scanner:fixture":  "node tools/validate-scanner-fixture.mjs",
+                    "validate:dummy-reports":  "node tools/validate-dummy-reports.mjs",
                     "verify:supabase:online":  "node tools/verify-supabase-online.mjs",
-                    "test":  "npm run test:uat \u0026\u0026 npm run validate:scanner:fixture"
+                    "test":  "npm run test:uat \u0026\u0026 npm run validate:scanner:fixture \u0026\u0026 npm run validate:dummy-reports"
                 },
     "dependencies":  {
                          "@supabase/supabase-js":  "^2.57.4",

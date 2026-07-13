@@ -1,11 +1,12 @@
-﻿import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
-import { syntheticCustomer, syntheticTradelines, syntheticWorkflow, uatSteps } from '../lib/processOnlyTestData';
+import { dummyCreditReports, dummyReportCoverage, getDummyReport } from '../lib/dummyCreditReports';
+import { uatSteps } from '../lib/processOnlyTestData';
 import { PROCESS_ONLY_FLAGS } from '../lib/processOnlyMode';
 
 const founderContent: Record<string, { title: string; body: string; labels: string[] }> = {
   dashboard: { title: 'Founder dashboard', body: 'A+ test command center for the process-only simulator.', labels: ['Production blocked', 'Founder review'] },
-  customers: { title: 'Customers', body: 'Synthetic customer list only. No production customer database is used.', labels: ['Synthetic data only'] },
+  customers: { title: 'Customers', body: '10 synthetic customer profiles for bankruptcy, medical, mortgage, re-aging, duplicates, scoring, letters, and email preview testing.', labels: ['Synthetic data only', '10 dummy reports'] },
   'report-intake': { title: 'Uploaded reports simulation', body: 'Synthetic report intake status. Real report storage is blocked.', labels: ['No real upload', 'Secure vault required'] },
   'scanner-review': { title: 'Scanner review', body: 'Founder sees extraction confidence and review needs from synthetic data.', labels: ['Scanner fixture only', 'Admin review required'] },
   'bureau-comparison': { title: '3-bureau comparison admin view', body: 'Technical comparison preview across bureaus.', labels: ['Synthetic 3-bureau data'] },
@@ -71,11 +72,66 @@ function UatScorecard() {
   );
 }
 
+function ProfileGrid() {
+  return (
+    <Panel title="10 synthetic customer profiles">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {dummyCreditReports.map((report, index) => (
+          <Link key={report.id} to={`/member/dashboard?case=${report.id}`} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 hover:border-emerald-400">
+            <p className="font-black text-slate-950">{index + 1}. {report.display_name}</p>
+            <p className="mt-1 font-bold text-emerald-700">{report.persona}</p>
+            <p className="mt-2">Current score: <strong>{report.score_current}</strong></p>
+            <p>Stage: {report.stage}</p>
+          </Link>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function CoveragePanel() {
+  return (
+    <Panel title="Tool coverage">
+      <div className="flex flex-wrap gap-2">
+        {dummyReportCoverage.map((item) => <Pill key={item}>{item}</Pill>)}
+      </div>
+    </Panel>
+  );
+}
+
+function CaseDetail({ reportId }: { reportId: string | null }) {
+  const report = getDummyReport(reportId);
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel title="Selected test case">
+        <p className="text-sm text-slate-700"><strong>{report.display_name}</strong> - {report.persona}</p>
+        <p className="mt-2 text-sm text-slate-700">{report.profile_summary}</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <Pill>{`Start ${report.score_start}`}</Pill>
+          <Pill>{`Current ${report.score_current}`}</Pill>
+          <Pill>{`Goal ${report.score_goal}`}</Pill>
+        </div>
+      </Panel>
+      <Panel title="Draft letter and email preview">
+        <p className="text-sm leading-6 text-slate-700">{report.draft_letter_preview}</p>
+        <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">{report.email_preview}</p>
+      </Panel>
+      <Panel title="Dispute and scanner tests">
+        <ul className="space-y-2 text-sm text-slate-700">{report.dispute_tests.map((test) => <li key={test}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{test}</li>)}</ul>
+      </Panel>
+      <Panel title="Tracking stages">
+        <div className="grid gap-2 md:grid-cols-5">{report.tracking_stages.map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>
+      </Panel>
+    </div>
+  );
+}
+
 export default function FounderProcessPage({ view }: { view: string }) {
   const location = useLocation();
   const currentView = view || location.pathname.split('/').filter(Boolean)[1] || 'dashboard';
   const config = founderContent[currentView];
   if (!config) return <Navigate to="/founder/dashboard" replace />;
+  const reportId = new URLSearchParams(location.search).get('case');
 
   return (
     <div className="space-y-5">
@@ -87,24 +143,22 @@ export default function FounderProcessPage({ view }: { view: string }) {
       </header>
 
       {currentView === 'uat-1-35-report' ? <UatScorecard /> : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Safety state">
-            <ul className="space-y-2 text-sm text-slate-700">
-              {Object.entries(PROCESS_ONLY_FLAGS).map(([key, value]) => <li key={key}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{key}: <strong>{String(value)}</strong></li>)}
-            </ul>
-          </Panel>
-          <Panel title="Synthetic case">
-            <p className="text-sm text-slate-700"><strong>{syntheticCustomer.display_name}</strong> - {syntheticCustomer.goal}</p>
-            <p className="mt-2 text-sm text-slate-700">Workflow: {Object.values(syntheticWorkflow).join(' | ')}</p>
-          </Panel>
-          <Panel title="Review items">
-            <div className="space-y-3">{syntheticTradelines.map((item) => <div key={item.account_number_masked} className="rounded-md bg-slate-50 p-3 text-sm text-slate-700"><strong>{item.bureau}</strong> - {item.account_name} {item.account_number_masked}<br />{item.possible_issue}</div>)}</div>
-          </Panel>
-          <Panel title="Blocked production actions">
-            <ul className="space-y-2 text-sm text-slate-700">
-              {['real uploads', 'exports/downloads', 'dispute sends', 'letter mailing', 'SMS/email', 'attorney sharing', 'payments', 'commercial launch'].map((item) => <li key={item}><Lock className="mr-2 inline h-4 w-4 text-rose-600" />{item}</li>)}
-            </ul>
-          </Panel>
+        <div className="space-y-4">
+          <ProfileGrid />
+          <CoveragePanel />
+          <CaseDetail reportId={reportId} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Safety state">
+              <ul className="space-y-2 text-sm text-slate-700">
+                {Object.entries(PROCESS_ONLY_FLAGS).map(([key, value]) => <li key={key}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{key}: <strong>{String(value)}</strong></li>)}
+              </ul>
+            </Panel>
+            <Panel title="Blocked production actions">
+              <ul className="space-y-2 text-sm text-slate-700">
+                {['real uploads', 'exports/downloads', 'dispute sends', 'letter mailing', 'SMS/email', 'attorney sharing', 'payments', 'commercial launch'].map((item) => <li key={item}><Lock className="mr-2 inline h-4 w-4 text-rose-600" />{item}</li>)}
+              </ul>
+            </Panel>
+          </div>
         </div>
       )}
 
@@ -119,5 +173,3 @@ export default function FounderProcessPage({ view }: { view: string }) {
     </div>
   );
 }
-
-
