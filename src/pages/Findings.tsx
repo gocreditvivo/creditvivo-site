@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowRight, CheckCircle, Clock, Download, FileSearch, MailCheck, Route, ShieldCheck } from 'lucide-react';
 import { getScannerOutputDownloadUrl } from '../lib/scannerApi';
 import { getLastScanResult } from '../lib/scanStorage';
@@ -315,7 +315,7 @@ export default function Findings() {
                       {issue.customer_explanation}
                     </p>
                     <p className="text-[11px] text-navy-400 mt-2">
-                      {issue.suggested_round} • Confidence: {issue.confidence}
+                      {issue.suggested_round} â€¢ Confidence: {issue.confidence}
                     </p>
                   </div>
                 </div>
@@ -324,7 +324,7 @@ export default function Findings() {
           </div>
 
           <Link
-            to="/admin-review"
+            to="/founder/scanner-review"
             className="inline-flex items-center gap-2 mt-5 text-xs font-semibold text-sky-700 hover:text-sky-800"
           >
             Open internal review view

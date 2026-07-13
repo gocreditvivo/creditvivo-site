@@ -1,3 +1,4 @@
+﻿import { assertProcessOnlyBlocked, isProcessOnlyMode } from './processOnlyMode';
 export type ScannerFileInfo = {
   filename: string;
   bureau: string;
@@ -149,6 +150,7 @@ export async function parseCreditReports(
   files: File[],
   useAiSecondPass = false
 ): Promise<ScannerParseResult> {
+  if (isProcessOnlyMode()) assertProcessOnlyBlocked('scanner_parse_real_data');
   if (!SCANNER_API_URL) {
     throw new Error(
       'The scanner backend is not connected yet. You can still load demo findings to preview the flow.'

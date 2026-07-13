@@ -1,0 +1,122 @@
+﻿import { Link, Navigate, useLocation } from 'react-router-dom';
+import { AlertCircle, CheckCircle2, FileText, Lock, MessageSquare } from 'lucide-react';
+import { syntheticCustomer, syntheticTradelines, syntheticWorkflow } from '../lib/processOnlyTestData';
+import { getProcessOnlyBlock } from '../lib/processOnlyMode';
+
+const memberContent: Record<string, { title: string; eyebrow: string; body: string; labels: string[] }> = {
+  signup: { title: 'Create your Credit Vivo test account', eyebrow: 'Step 2', body: 'This looks like signup, but no production account is created. Tim can review the customer experience safely.', labels: ['Simulation only', 'No production account', 'No payment'] },
+  login: { title: 'Member login simulation', eyebrow: 'Step 3', body: 'This screen simulates access to the portal. Real auth is a future production gate.', labels: ['Simulation only', 'Production auth blocked'] },
+  dashboard: { title: 'Your Credit Vivo roadmap', eyebrow: 'Step 4', body: 'The customer sees what happened, what is waiting, and what Credit Vivo reviews next.', labels: ['Simulation only', 'Synthetic data'] },
+  upload: { title: 'Upload ID and credit report', eyebrow: 'Step 5', body: 'The customer sees upload choices, but real ID/report storage is blocked in this test version.', labels: ['Real upload blocked', 'Secure vault required', 'No files saved'] },
+  findings: { title: 'Scanner output and AI findings', eyebrow: 'Steps 6-7', body: 'Synthetic scanner output is shown as plain-English possible report errors.', labels: ['Synthetic scanner output', 'Draft review data', 'Results vary'] },
+  'negative-accounts': { title: 'Negative account review', eyebrow: 'Step 8', body: 'Masked synthetic negative accounts show what a customer would understand first.', labels: ['Masked data only', 'Admin review required'] },
+  'bureau-comparison': { title: '3-bureau comparison', eyebrow: 'Step 9', body: 'Customer sees Experian, Equifax, and TransUnion differences without raw backend details.', labels: ['3-bureau preview', 'Synthetic data only'] },
+  'score-blockers': { title: 'Score blockers', eyebrow: 'Step 10', body: 'Educational score blockers show what may be holding a score back without guarantees.', labels: ['No score guarantee', 'Education only'] },
+  'comeback-plan': { title: 'Credit Comeback path', eyebrow: 'Step 11', body: 'Customer sees a motivating, non-guaranteed improvement path tied to review items.', labels: ['Estimated only', 'Results not guaranteed'] },
+  disputes: { title: 'Draft dispute letters and approvals', eyebrow: 'Steps 12-15', body: 'Draft letter text is visible, customer approval is simulated, and compliance blocks all sending.', labels: ['Draft only', 'Not sent', 'Customer approval simulation', 'Compliance blocked'] },
+  progress: { title: 'Progress tracker', eyebrow: 'Step 16', body: 'Customer sees draft, approval, admin review, compliance review, and not-sent status.', labels: ['Production blocked', 'Not sent'] },
+  messages: { title: 'Messages and questions', eyebrow: 'Step 17', body: 'Customer sees support/message previews, but no SMS or email leaves Credit Vivo.', labels: ['Preview only', 'No SMS', 'No email'] },
+};
+
+function StatusPill({ children }: { children: string }) {
+  return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{children}</span>;
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-3 text-base font-black text-slate-950">{title}</h2>{children}</section>;
+}
+
+function TradelineCards() {
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      {syntheticTradelines.map((item) => (
+        <article key={`${item.bureau}-${item.account_number_masked}`} className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{item.bureau}</p>
+          <h3 className="mt-2 text-sm font-black text-slate-950">{item.account_name}</h3>
+          <p className="mt-1 text-xs text-slate-500">{item.account_type} | {item.account_number_masked}</p>
+          <p className="mt-3 text-sm text-slate-700">{item.possible_issue}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusPill>{item.status}</StatusPill>
+            <StatusPill>{item.risk_label}</StatusPill>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export default function MemberProcessPage({ view }: { view: string }) {
+  const location = useLocation();
+  const currentView = view || location.pathname.split('/').filter(Boolean)[1] || 'dashboard';
+  const config = memberContent[currentView];
+  if (!config) return <Navigate to="/member/dashboard" replace />;
+  const uploadBlock = getProcessOnlyBlock('real_upload');
+
+  return (
+    <div className="space-y-5">
+      <header className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{config.eyebrow}</p>
+        <h1 className="mt-2 text-2xl font-black text-slate-950 md:text-3xl">{config.title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{config.body}</p>
+        <div className="mt-4 flex flex-wrap gap-2">{config.labels.map((label) => <StatusPill key={label}>{label}</StatusPill>)}</div>
+      </header>
+
+      {['signup', 'login', 'dashboard'].includes(currentView) && (
+        <Card title="Synthetic member profile">
+          <div className="grid gap-3 text-sm md:grid-cols-3">
+            <p><strong>Name:</strong> {syntheticCustomer.display_name}</p>
+            <p><strong>Email:</strong> {syntheticCustomer.test_email}</p>
+            <p><strong>Status:</strong> {syntheticCustomer.member_status}</p>
+            <p className="md:col-span-3"><strong>Goal:</strong> {syntheticCustomer.goal}</p>
+          </div>
+        </Card>
+      )}
+
+      {currentView === 'upload' && (
+        <Card title="Upload controls are visual only">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5"><FileText className="mb-3 text-slate-500" /><strong>Upload ID</strong><p className="mt-2 text-sm text-slate-600">Blocked in test mode. Secure vault write is required before production.</p></div>
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5"><FileText className="mb-3 text-slate-500" /><strong>Upload 3-bureau report</strong><p className="mt-2 text-sm text-slate-600">Blocked in test mode. Scanner preview uses synthetic fixture data only.</p></div>
+          </div>
+          <p className="mt-4 rounded-md bg-rose-50 p-3 text-sm font-bold text-rose-800">{uploadBlock.status}: {uploadBlock.reason}</p>
+        </Card>
+      )}
+
+      {['findings', 'negative-accounts', 'bureau-comparison', 'score-blockers', 'comeback-plan'].includes(currentView) && <TradelineCards />}
+
+      {currentView === 'disputes' && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card title="Draft letter preview">
+            <p className="text-sm leading-6 text-slate-700">DRAFT ONLY: Please investigate the accuracy and completeness of the synthetic account details shown in this test preview. This draft is not sent and is not legal advice.</p>
+          </Card>
+          <Card title="Approval and compliance state">
+            <ul className="space-y-2 text-sm text-slate-700">
+              <li><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" /> Customer approval: {syntheticWorkflow.customer_approval_status}</li>
+              <li><Lock className="mr-2 inline h-4 w-4 text-amber-600" /> Admin review: {syntheticWorkflow.admin_review_status}</li>
+              <li><AlertCircle className="mr-2 inline h-4 w-4 text-rose-600" /> Compliance: {syntheticWorkflow.compliance_status}</li>
+              <li><Lock className="mr-2 inline h-4 w-4 text-rose-600" /> Send status: {syntheticWorkflow.send_status}</li>
+            </ul>
+          </Card>
+        </div>
+      )}
+
+      {currentView === 'progress' && (
+        <Card title="Process-only progress tracker">
+          <div className="grid gap-3 md:grid-cols-5">{['Draft ready', 'Customer approval simulated', 'Admin review required', 'Compliance blocked', 'Not sent'].map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>
+        </Card>
+      )}
+
+      {currentView === 'messages' && (
+        <Card title="Message preview">
+          <p className="flex items-center gap-2 text-sm text-slate-700"><MessageSquare size={16} /> Credit Vivo: Your synthetic findings are ready for review. No email or SMS was sent.</p>
+        </Card>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Link className="btn-primary" to="/founder/uat-1-35-report">View 1-35 UAT report</Link>
+        <Link className="btn-soft" to="/founder/dashboard">Founder view</Link>
+      </div>
+    </div>
+  );
+}
+

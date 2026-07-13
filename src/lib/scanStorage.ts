@@ -1,10 +1,11 @@
-import type { ScannerParseResult } from './scannerApi';
+﻿import type { ScannerParseResult } from './scannerApi';
+import { isProcessOnlyMode } from './processOnlyMode';
 
 const LAST_SCAN_KEY = 'creditVivoLastScanResult';
 
 export function saveLastScanResult(result: ScannerParseResult) {
   try {
-    localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
+    if (!isProcessOnlyMode()) localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
   } catch {
     // Storage can be unavailable in strict private browsing modes.
   }
@@ -12,7 +13,7 @@ export function saveLastScanResult(result: ScannerParseResult) {
 
 export function getLastScanResult(): ScannerParseResult | null {
   try {
-    const raw = localStorage.getItem(LAST_SCAN_KEY);
+    const raw = isProcessOnlyMode() ? null : localStorage.getItem(LAST_SCAN_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as ScannerParseResult;
   } catch {
@@ -22,7 +23,7 @@ export function getLastScanResult(): ScannerParseResult | null {
 
 export function clearLastScanResult() {
   try {
-    localStorage.removeItem(LAST_SCAN_KEY);
+    if (!isProcessOnlyMode()) localStorage.removeItem(LAST_SCAN_KEY);
   } catch {
     // Storage can be unavailable in strict private browsing modes.
   }
@@ -102,7 +103,7 @@ export function getDemoScanResult(): ScannerParseResult {
           'This collection item should be reviewed for original creditor, balance, ownership, and reporting details.',
         admin_explanation:
           'Collection/debt buyer candidate. Verify original creditor, assignment/ownership, balance, authority, and reporting fields.',
-        suggested_round: 'Round 2 — Collection Review',
+        suggested_round: 'Round 2 â€” Collection Review',
         related_tradeline_ids: ['demo_1'],
         confidence: 'medium',
       },
@@ -115,7 +116,7 @@ export function getDemoScanResult(): ScannerParseResult {
           'This charge-off should be reviewed for balance, status, dates, and whether it was sold or transferred.',
         admin_explanation:
           'Charge-off candidate. Check DOFD, balance, sold/transferred status, creditor ownership, and duplicate collection reporting.',
-        suggested_round: 'Round 4 — Reporting Accuracy Review',
+        suggested_round: 'Round 4 â€” Reporting Accuracy Review',
         related_tradeline_ids: ['demo_2'],
         confidence: 'medium',
       },
