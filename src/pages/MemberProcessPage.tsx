@@ -1,6 +1,7 @@
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, FileText, Lock, MessageSquare } from 'lucide-react';
 import { dummyCreditReports, getDummyReport, type DummyTradeline } from '../lib/dummyCreditReports';
+import { buildLetterWorkflowSummary, buildScannerLetterQueue } from '../lib/scannerLetterEngine';
 import { syntheticWorkflow } from '../lib/processOnlyTestData';
 import { getProcessOnlyBlock } from '../lib/processOnlyMode';
 
@@ -91,6 +92,8 @@ export default function MemberProcessPage({ view }: { view: string }) {
   if (!config) return <Navigate to="/member/dashboard" replace />;
   const uploadBlock = getProcessOnlyBlock('real_upload');
   const selectedReport = getDummyReport(new URLSearchParams(location.search).get('case'));
+  const letterQueue = buildScannerLetterQueue(selectedReport);
+  const letterWorkflow = buildLetterWorkflowSummary(selectedReport);
 
   return (
     <div className="space-y-5">
@@ -130,8 +133,17 @@ export default function MemberProcessPage({ view }: { view: string }) {
 
       {currentView === 'disputes' && (
         <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Draft letter preview">
-            <p className="text-sm leading-6 text-slate-700">{selectedReport.draft_letter_preview}</p>
+          <Card title="Generated scanner letter queue">
+            <div className="grid gap-3">
+              {letterQueue.map((letter) => (
+                <article key={letter.queue_id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-black uppercase text-emerald-700">{letter.letter_type} | {letter.tracking_status}</p>
+                  <h3 className="mt-1 text-sm font-black text-slate-950">{letter.letter_subject}</h3>
+                  <p className="mt-2 text-xs text-slate-600">{letter.account_name} {letter.account_number_masked} | {letter.bureau}</p>
+                  <p className="mt-2 text-xs font-bold text-rose-700">Send: {String(letter.send_allowed)} | Auto-send: {String(letter.auto_send_allowed)} | Mail: {String(letter.mailing_allowed)}</p>
+                </article>
+              ))}
+            </div>
           </Card>
           <Card title="Approval and compliance state">
             <ul className="space-y-2 text-sm text-slate-700">
@@ -139,13 +151,22 @@ export default function MemberProcessPage({ view }: { view: string }) {
               <li><Lock className="mr-2 inline h-4 w-4 text-amber-600" /> Admin review: {syntheticWorkflow.admin_review_status}</li>
               <li><AlertCircle className="mr-2 inline h-4 w-4 text-rose-600" /> Compliance: {syntheticWorkflow.compliance_status}</li>
               <li><Lock className="mr-2 inline h-4 w-4 text-rose-600" /> Send status: {syntheticWorkflow.send_status}</li>
+              <li><Lock className="mr-2 inline h-4 w-4 text-rose-600" /> Engine auto-send: {String(letterWorkflow.auto_send_allowed)}</li>
             </ul>
           </Card>
           <Card title="Dispute test coverage">
             <ul className="space-y-2 text-sm text-slate-700">{selectedReport.dispute_tests.map((test) => <li key={test}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{test}</li>)}</ul>
           </Card>
-          <Card title="Internal email preview">
-            <p className="text-sm leading-6 text-slate-700">{selectedReport.email_preview}</p>
+          <Card title="Draft body and evidence">
+            <div className="space-y-4">
+              {letterQueue.map((letter) => (
+                <article key={`${letter.queue_id}-body`} className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs font-black text-slate-600">{letter.letter_subject}</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{letter.draft_letter_body}</p>
+                  <p className="mt-3 text-xs font-black text-slate-600">Evidence needed: {letter.evidence_needed.join('; ')}</p>
+                </article>
+              ))}
+            </div>
           </Card>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import { dummyCreditReports, dummyReportCoverage, getDummyReport } from '../lib/dummyCreditReports';
+import { buildLetterWorkflowSummary, buildScannerLetterQueue } from '../lib/scannerLetterEngine';
 import { uatSteps } from '../lib/processOnlyTestData';
 import { PROCESS_ONLY_FLAGS } from '../lib/processOnlyMode';
 
@@ -101,6 +102,8 @@ function CoveragePanel() {
 
 function CaseDetail({ reportId }: { reportId: string | null }) {
   const report = getDummyReport(reportId);
+  const letterQueue = buildScannerLetterQueue(report);
+  const letterWorkflow = buildLetterWorkflowSummary(report);
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel title="Selected test case">
@@ -112,15 +115,36 @@ function CaseDetail({ reportId }: { reportId: string | null }) {
           <Pill>{`Goal ${report.score_goal}`}</Pill>
         </div>
       </Panel>
-      <Panel title="Draft letter and email preview">
-        <p className="text-sm leading-6 text-slate-700">{report.draft_letter_preview}</p>
-        <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">{report.email_preview}</p>
+      <Panel title="Scanner letter workflow">
+        <div className="grid gap-2 md:grid-cols-3">
+          <Pill>{`Queued ${letterWorkflow.total_queue_items}`}</Pill>
+          <Pill>{`Draft ${letterWorkflow.draft_letters}`}</Pill>
+          <Pill>{`No-letter ${letterWorkflow.no_letter_recommended}`}</Pill>
+        </div>
+        <p className="mt-3 rounded-md bg-rose-50 p-3 text-sm font-bold text-rose-800">
+          Auto-send: {String(letterWorkflow.auto_send_allowed)} | Mailing: {String(letterWorkflow.mailing_allowed)} | Email: {String(letterWorkflow.email_allowed)}
+        </p>
+        <p className="mt-3 text-xs font-bold text-slate-600">{letterWorkflow.workflow}</p>
       </Panel>
       <Panel title="Dispute and scanner tests">
         <ul className="space-y-2 text-sm text-slate-700">{report.dispute_tests.map((test) => <li key={test}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{test}</li>)}</ul>
       </Panel>
       <Panel title="Tracking stages">
         <div className="grid gap-2 md:grid-cols-5">{report.tracking_stages.map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>
+      </Panel>
+      <Panel title="Generated draft queue">
+        <div className="space-y-3">
+          {letterQueue.map((letter) => (
+            <article key={letter.queue_id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-black uppercase text-emerald-700">{letter.queue_id} | {letter.queue_stage}</p>
+              <h3 className="mt-1 text-sm font-black text-slate-950">{letter.letter_subject}</h3>
+              <p className="mt-2 text-xs text-slate-600">{letter.account_name} {letter.account_number_masked} | {letter.recipient_type}</p>
+              <p className="mt-2 text-xs font-bold text-rose-700">Lob: {letter.lob_ready_preview.status} | Send allowed: {String(letter.send_allowed)}</p>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{letter.draft_letter_body}</p>
+              <p className="mt-3 text-xs font-black text-slate-600">Evidence: {letter.evidence_needed.join('; ')}</p>
+            </article>
+          ))}
+        </div>
       </Panel>
     </div>
   );

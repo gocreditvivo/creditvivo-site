@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 
 const fixture = readFileSync('src/lib/dummyCreditReports.ts', 'utf8');
+const letterEngine = readFileSync('src/lib/scannerLetterEngine.ts', 'utf8');
+const memberPage = readFileSync('src/pages/MemberProcessPage.tsx', 'utf8');
+const founderPage = readFileSync('src/pages/FounderProcessPage.tsx', 'utf8');
 const requiredIssueTypes = [
   'bankruptcy',
   'medical_collection',
@@ -40,6 +43,50 @@ for (const requiredText of ['draft_letter_preview', 'email_preview', 'tracking_s
     console.error(`FAIL missing required report field: ${requiredText}`);
     failed = true;
   }
+}
+
+for (const requiredEngineText of [
+  'buildScannerLetterQueue',
+  'buildLetterWorkflowSummary',
+  'send_allowed: false',
+  'auto_send_allowed: false',
+  'mailing_allowed: false',
+  'email_allowed: false',
+  'blocked_until_approvals',
+  'CUSTOMER REVIEW AND APPROVAL REQUIRED',
+]) {
+  if (!letterEngine.includes(requiredEngineText)) {
+    console.error(`FAIL scanner letter engine missing: ${requiredEngineText}`);
+    failed = true;
+  }
+}
+
+for (const requiredType of [
+  'bankruptcy_reporting_review',
+  'medical_collection_validation',
+  'mortgage_payment_history_review',
+  'reaging_date_review',
+  'charge_off_balance_status_review',
+  'duplicate_collection_review',
+  'bureau_consistency_review',
+  'no_dispute_recommended',
+  'utilization_action_plan',
+  'identity_account_investigation',
+]) {
+  if (!letterEngine.includes(requiredType)) {
+    console.error(`FAIL scanner letter engine missing letter type: ${requiredType}`);
+    failed = true;
+  }
+}
+
+if (!memberPage.includes('buildScannerLetterQueue') || !memberPage.includes('Generated scanner letter queue')) {
+  console.error('FAIL member page is not wired to generated scanner letter queue');
+  failed = true;
+}
+
+if (!founderPage.includes('buildScannerLetterQueue') || !founderPage.includes('Generated draft queue')) {
+  console.error('FAIL founder page is not wired to generated scanner letter queue');
+  failed = true;
 }
 
 if (/\b\d{3}-\d{2}-\d{4}\b/.test(fixture)) {
