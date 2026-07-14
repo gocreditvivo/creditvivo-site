@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, FileText, Lock, MessageSquare } from 'lucide-react';
 import { dummyCreditReports, getDummyReport, type DummyTradeline } from '../lib/dummyCreditReports';
 import { buildLetterWorkflowSummary, buildScannerLetterQueue } from '../lib/scannerLetterEngine';
+import { buildScannerOutput, type ScannerOutput } from '../lib/scannerOutputEngine';
 import { syntheticWorkflow } from '../lib/processOnlyTestData';
 import { getProcessOnlyBlock } from '../lib/processOnlyMode';
 
@@ -85,6 +86,77 @@ function TradelineCards({ tradelines }: { tradelines: DummyTradeline[] }) {
   );
 }
 
+function ScannerOutputPanel({ output }: { output: ScannerOutput }) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card title="What the scanner parsed">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+            <p className="text-xs font-black text-slate-500">Accounts</p>
+            <p className="text-2xl font-black text-slate-950">{output.accounts.length}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+            <p className="text-xs font-black text-slate-500">Review items</p>
+            <p className="text-2xl font-black text-rose-700">{output.negative_tradelines.length}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+            <p className="text-xs font-black text-slate-500">Draft queue</p>
+            <p className="text-2xl font-black text-slate-950">{output.recommended_letter_queue.length}</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-slate-700">{output.customer_summary}</p>
+      </Card>
+
+      <Card title="Scanner self-checks">
+        <div className="grid gap-2">
+          {output.self_checks.map((check) => (
+            <div key={check.check_id} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-slate-900">{check.label}</p>
+                <StatusPill>{check.status}</StatusPill>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{check.detail}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Required scanner output">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>{['Account', 'Bureau', 'Status', 'Issue', 'Confidence'].map((heading) => <th key={heading} className="px-3 py-2 font-black">{heading}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {output.accounts.map((account) => (
+                <tr key={account.id}>
+                  <td className="px-3 py-2 font-bold text-slate-900">{account.account_name}<br /><span className="font-normal text-slate-500">{account.account_number_masked}</span></td>
+                  <td className="px-3 py-2">{account.bureau}</td>
+                  <td className="px-3 py-2">{account.status}</td>
+                  <td className="px-3 py-2">{account.possible_issue}</td>
+                  <td className="px-3 py-2 font-bold">{Math.round(account.confidence_score * 100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card title="Possible dispute leads and evidence">
+        <div className="space-y-3">
+          {output.possible_dispute_leads.map((lead) => (
+            <article key={lead.source_tradeline_id} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+              <p className="text-xs font-black uppercase text-emerald-700">{lead.issue_type} | {Math.round(lead.confidence_score * 100)}%</p>
+              <p className="mt-1 text-sm font-black text-slate-950">{lead.recommended_action}</p>
+              <p className="mt-2 text-xs text-slate-600">Evidence needed: {lead.evidence_needed.join('; ')}</p>
+            </article>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function MemberProcessPage({ view }: { view: string }) {
   const location = useLocation();
   const currentView = view || location.pathname.split('/').filter(Boolean)[1] || 'dashboard';
@@ -92,6 +164,7 @@ export default function MemberProcessPage({ view }: { view: string }) {
   if (!config) return <Navigate to="/member/dashboard" replace />;
   const uploadBlock = getProcessOnlyBlock('real_upload');
   const selectedReport = getDummyReport(new URLSearchParams(location.search).get('case'));
+  const scannerOutput = buildScannerOutput(selectedReport);
   const letterQueue = buildScannerLetterQueue(selectedReport);
   const letterWorkflow = buildLetterWorkflowSummary(selectedReport);
 
@@ -129,7 +202,12 @@ export default function MemberProcessPage({ view }: { view: string }) {
         </Card>
       )}
 
-      {['findings', 'negative-accounts', 'bureau-comparison', 'score-blockers', 'comeback-plan'].includes(currentView) && <TradelineCards tradelines={selectedReport.tradelines} />}
+      {['findings', 'negative-accounts', 'bureau-comparison', 'score-blockers', 'comeback-plan'].includes(currentView) && (
+        <>
+          <ScannerOutputPanel output={scannerOutput} />
+          <TradelineCards tradelines={selectedReport.tradelines} />
+        </>
+      )}
 
       {currentView === 'disputes' && (
         <div className="grid gap-4 md:grid-cols-2">

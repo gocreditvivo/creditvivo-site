@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import { dummyCreditReports, dummyReportCoverage, getDummyReport } from '../lib/dummyCreditReports';
 import { buildLetterWorkflowSummary, buildScannerLetterQueue } from '../lib/scannerLetterEngine';
+import { buildScannerOutput } from '../lib/scannerOutputEngine';
 import { uatSteps } from '../lib/processOnlyTestData';
 import { PROCESS_ONLY_FLAGS } from '../lib/processOnlyMode';
 
@@ -102,6 +103,7 @@ function CoveragePanel() {
 
 function CaseDetail({ reportId }: { reportId: string | null }) {
   const report = getDummyReport(reportId);
+  const scannerOutput = buildScannerOutput(report);
   const letterQueue = buildScannerLetterQueue(report);
   const letterWorkflow = buildLetterWorkflowSummary(report);
   return (
@@ -126,8 +128,48 @@ function CaseDetail({ reportId }: { reportId: string | null }) {
         </p>
         <p className="mt-3 text-xs font-bold text-slate-600">{letterWorkflow.workflow}</p>
       </Panel>
+      <Panel title="Scanner output summary">
+        <div className="grid gap-2 md:grid-cols-4">
+          <Pill>{`Accounts ${scannerOutput.accounts.length}`}</Pill>
+          <Pill>{`Negatives ${scannerOutput.negative_tradelines.length}`}</Pill>
+          <Pill>{`Bureau checks ${scannerOutput.bureau_reports.length}`}</Pill>
+          <Pill>{`Leads ${scannerOutput.possible_dispute_leads.length}`}</Pill>
+        </div>
+        <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm font-semibold text-slate-700">{scannerOutput.admin_summary}</p>
+      </Panel>
+      <Panel title="Scanner self-checks">
+        <div className="grid gap-2">
+          {scannerOutput.self_checks.map((check) => (
+            <div key={check.check_id} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-slate-900">{check.label}</p>
+                <Pill>{check.status}</Pill>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{check.detail}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
       <Panel title="Dispute and scanner tests">
         <ul className="space-y-2 text-sm text-slate-700">{report.dispute_tests.map((test) => <li key={test}><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-600" />{test}</li>)}</ul>
+      </Panel>
+      <Panel title="3-bureau parser result">
+        <div className="grid gap-3 md:grid-cols-3">
+          {scannerOutput.bureau_reports.map((bureau) => (
+            <div key={bureau.bureau} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+              <p className="text-sm font-black text-slate-950">{bureau.bureau}</p>
+              <p className="mt-1 text-xs text-slate-600">Score {bureau.score} | Tradelines {bureau.tradeline_count}</p>
+              <p className="mt-1 text-xs font-bold text-rose-700">Negative/review {bureau.negative_count} | {bureau.highest_severity}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Missing info and evidence needed">
+        <ul className="space-y-2 text-sm text-slate-700">
+          {scannerOutput.missing_information_needed.slice(0, 8).map((item) => (
+            <li key={item}><AlertTriangle className="mr-2 inline h-4 w-4 text-amber-600" />{item}</li>
+          ))}
+        </ul>
       </Panel>
       <Panel title="Tracking stages">
         <div className="grid gap-2 md:grid-cols-5">{report.tracking_stages.map((stage) => <div key={stage} className="rounded-lg bg-slate-50 p-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">{stage}</div>)}</div>

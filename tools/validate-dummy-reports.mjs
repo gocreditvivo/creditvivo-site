@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 const fixture = readFileSync('src/lib/dummyCreditReports.ts', 'utf8');
 const letterEngine = readFileSync('src/lib/scannerLetterEngine.ts', 'utf8');
+const scannerOutputEngine = readFileSync('src/lib/scannerOutputEngine.ts', 'utf8');
 const memberPage = readFileSync('src/pages/MemberProcessPage.tsx', 'utf8');
 const founderPage = readFileSync('src/pages/FounderProcessPage.tsx', 'utf8');
 const requiredIssueTypes = [
@@ -79,12 +80,28 @@ for (const requiredType of [
   }
 }
 
-if (!memberPage.includes('buildScannerLetterQueue') || !memberPage.includes('Generated scanner letter queue')) {
+for (const requiredScannerOutputText of [
+  'buildScannerOutput',
+  'consumer_info_summary',
+  'bureau_reports',
+  'negative_tradelines',
+  'possible_dispute_leads',
+  'missing_information_needed',
+  'self_checks',
+  'letter_queue_safe',
+]) {
+  if (!scannerOutputEngine.includes(requiredScannerOutputText)) {
+    console.error(`FAIL scanner output engine missing: ${requiredScannerOutputText}`);
+    failed = true;
+  }
+}
+
+if (!memberPage.includes('buildScannerLetterQueue') || !memberPage.includes('Generated scanner letter queue') || !memberPage.includes('ScannerOutputPanel')) {
   console.error('FAIL member page is not wired to generated scanner letter queue');
   failed = true;
 }
 
-if (!founderPage.includes('buildScannerLetterQueue') || !founderPage.includes('Generated draft queue')) {
+if (!founderPage.includes('buildScannerLetterQueue') || !founderPage.includes('Generated draft queue') || !founderPage.includes('buildScannerOutput')) {
   console.error('FAIL founder page is not wired to generated scanner letter queue');
   failed = true;
 }
