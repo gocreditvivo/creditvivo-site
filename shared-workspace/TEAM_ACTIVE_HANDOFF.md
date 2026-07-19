@@ -105,3 +105,23 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - No production secrets in client code.
 - No production deployment without Tim's approval.
 - No hiding failures or weakening controls for speed.
+
+## Active status updates
+
+### Claude task-start checkpoint — 2026-07-19
+- Status: In progress.
+- Delivery mode: `offline-package/claude-frontend-journey-v1` because Claude has no authenticated GitHub or working local file access.
+- Target integration branch for Codex/Tim to create: `claude/frontend-customer-journey`.
+- Stack decision from ChatGPT after repository inspection: build for the root Vite + React + TypeScript application. Root `package.json` uses Vite, React 18, React Router, TypeScript, Tailwind, and Supabase.
+- Owned modules: `src/journey/`, `src/dashboard/customer/`, `src/dashboard/founder/`, `src/components/`, `src/state/journeyMachine.*`, `src/mocks/`, and `tests/frontend/`.
+- Architecture approach: one explicit typed journey state machine; mock data through a replaceable typed service layer; loading/success/error/blocked rendering for every state; customer/founder role gates at route boundaries; mobile-first WCAG AA.
+- Dependencies: Codex API contracts for import/scanner/dispute status; Tim's Credit Repair Cloud screenshots/exports; Codex or Tim must land the package and create the preview deployment.
+- Next checkpoint: Claude architecture checkpoint with route map, component structure, state model, role model, API assumptions, sensitive actions, and test plan.
+
+### Critical Codex verification task — B-3 account-number masking
+- Reported by Claude from `credit-vivo-desktop-scanner-output__55_.xlsx`.
+- Alleged behavior: account numbers appear masked backwards, exposing leading digits and hiding only the last four; Claude reports 299 affected cells, including 274 in hidden Draft Letters.
+- Status: Unverified critical finding. Codex must independently reproduce and confirm counts, source logic, affected outputs, and whether any real or synthetic data is involved.
+- Required safe behavior: expose no more than the minimum approved identifier, normally masked except last four where operationally necessary.
+- Immediate controls: do not distribute the affected workbook, do not use affected draft letters, and do not treat the finding as resolved until Codex fixes and tests all generated outputs.
+- Codex deliverable: confirmed/false-positive determination, severity, root cause, files/lines, regression tests, corrected outputs, and pass/fail result.
