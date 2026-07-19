@@ -23,6 +23,7 @@ Add each note with:
 | Founder view should look like CRC-style operator hub | Build admin queues, deadlines, letters, documents, and review states. |
 | Mini Tim is backend assistant | Do not put Mini Tim in public navigation for now. |
 | Attorney Authority matters but must stay compliant | Use trust signal carefully; no law-firm or guaranteed legal result claim. |
+| Claude proposed a Journey Spine | Consider a persistent progress rail showing where the customer is and whose turn it is. |
 
 ## CRC / Competitor Flow Notes
 
@@ -49,3 +50,4 @@ Backend requirement:
 | What should customer see after scanner review? | Tim + ChatGPT | Open |
 | How much dispute detail should customer see? | Tim + compliance | Open |
 | Should customer approve each letter or each dispute package? | Tim + Codex | Open |
+| Should CreditVivo migrate customer/founder UI to Vite/React or keep current Node/static screens for MVP? | Tim + Codex + Claude | Open |
