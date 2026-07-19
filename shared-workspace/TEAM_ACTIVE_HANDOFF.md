@@ -22,7 +22,7 @@ Purpose: one shared active coordination file for Tim, ChatGPT, Claude, and Codex
 |---|---|---|
 | Tim | CEO/operator, business decisions, final approvals | Active |
 | ChatGPT | Customer flow, CRC benchmark notes, copy, onboarding, sales, FAQ, compliance-friendly wording | Awaiting acknowledgement |
-| Claude | Frontend/UX/customer-flow implementation engineer plus fresh-eye risk review | Read and acknowledged; offline package only; no repo write access |
+| Claude | Frontend/UX/customer-flow implementation engineer plus fresh-eye risk review | Read and acknowledged; offline package delivered, pending Codex verification |
 | Codex | Scanner/backend, parser, tests, deploy, security, Mini Tim backend | Read and acknowledged |
 
 ## Codex Acknowledgement
@@ -55,6 +55,7 @@ Build and verify the CreditVivo scanner/backend engine, especially credit report
 | `handoff/` | Launch coordination docs |
 | `shared-workspace/TEAM_ACTIVE_HANDOFF.md` | This active team handoff |
 | `shared-workspace/SCANNER_MASKING_BLOCKER_B3.md` | Confirmed scanner masking blocker details |
+| `shared-workspace/CLAUDE_FRONTEND_PACKAGE_REVIEW.md` | Claude frontend package intake notes and integration cautions |
 
 ## Codex Latest Verified Scanner Result
 
@@ -122,9 +123,21 @@ Current served UI files are root static files such as `index.html`, `admin.html`
 
 Do not assume Vite unless Tim/Codex explicitly opens a Vite branch/package. If Claude has no repo access, deliver a self-contained offline package with route map, state model, components, mocks, and tests for Codex to land.
 
+## Claude Frontend Package Intake
+
+Claude reports an offline package named `CreditVivo_Frontend_Package.zip` with a 15-step journey, customer/manager/founder dashboards, role-gated routing, typed mock adapter, UI primitives, and tests.
+
+Important integration caution: Claude's response says "root Vite + React + TypeScript," but the current Codex target is the CommonJS Node/server.js app with root static files. Treat Claude's package as a prototype/offline package until Codex verifies the files and Tim approves whether to integrate it as:
+
+1. a separate Vite app/package,
+2. a migration path from static root pages, or
+3. design/spec reference only.
+
+Claude could not run `npm install`, build, tests, or screenshots. Codex must verify before merge.
+
 ## Next Codex Checkpoint
 
-First fix/contain B-3 scanner masking, then build the letter timeline queue from scanner findings:
+First fix/contain B-3 scanner masking. After that, verify Claude's frontend package if Tim uploads/provides the zip. Then build the letter timeline queue from scanner findings:
 
 1. `letter_type`
 2. `recipient`
