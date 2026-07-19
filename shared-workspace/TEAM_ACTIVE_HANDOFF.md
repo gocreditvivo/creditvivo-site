@@ -40,6 +40,32 @@ Maintain requirements, review Claude architecture/visuals, review Codex findings
 ### Tim
 Approve major product/visual decisions, provide Credit Repair Cloud screenshots/exports, arrange legal review, and withhold production approval until testing and verification are complete.
 
+## Accelerated execution target
+This is an AI-assisted build. Move fast without weakening controls.
+
+### Claude target
+- Start immediately after reading this handoff.
+- Post branch name, owned files/modules, approach, dependencies, risks, and first checkpoint before coding deeply.
+- Deliver the first working frontend flow within 2–6 hours where technically feasible.
+- Deliver the complete mock-data customer flow, mobile layouts, key failure states, and core tests within 6–12 hours where technically feasible.
+- Deliver preview deployment, screenshots, test results, known limitations, and Codex verification package within 12–24 hours where technically feasible.
+- Report any blocker immediately. Do not wait for a scheduled update.
+
+### Codex target
+- Begin review at Claude's architecture checkpoint rather than waiting until completion.
+- Verify route/state integrity, role boundaries, data isolation, secrets, API assumptions, Supabase/RLS implications, test coverage, and preview safety.
+- Return confirmed defects with severity, file/line references, missing tests, and pass/conditional pass/fail.
+- Complete the first verification pass within 6–12 hours after Claude's review package is available where technically feasible.
+- Re-test fixes promptly and document remaining launch blockers.
+
+### ChatGPT target
+- Review handoff updates on demand and through the active hourly watcher.
+- Resolve requirement conflicts quickly.
+- Keep Tim informed of actual progress, blockers, risks, and verified completion evidence.
+
+### Founder expectation
+The target is same-day first build and next-day verification, not a guarantee. Actual completion depends on repo health, API readiness, auth/Supabase issues, and test failures. Speed does not override security, customer-data protection, or production approval gates.
+
 ## Required handoff checkpoints
 
 ### Task start
