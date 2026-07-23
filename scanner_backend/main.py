@@ -18,6 +18,7 @@ import os
 import shutil
 import uuid
 import hashlib
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -26,6 +27,11 @@ from typing import Dict, List
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+
+try:
+    from .posthog_config import capture as ph_capture, flush as ph_flush, get_posthog
+except ImportError:
+    from posthog_config import capture as ph_capture, flush as ph_flush, get_posthog
 
 try:
     from pypdf import PdfReader
@@ -204,7 +210,14 @@ RETAIN_UPLOADS = os.getenv("SCANNER_RETAIN_UPLOADS", "false").lower() == "true"
 WRITE_RAW_TEXT = os.getenv("SCANNER_WRITE_RAW_TEXT", "true").lower() == "true"
 ALLOWED_PDF_TYPES = {"application/pdf", "application/x-pdf", "application/octet-stream", "binary/octet-stream"}
 
-app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    get_posthog()  # initialise and warm-up the PostHog client on startup
+    yield
+    ph_flush()  # flush buffered events before shutdown
+
+
+app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0", lifespan=lifespan)
 
 allowed_origins = os.getenv(
     "CREDIT_VIVO_ALLOWED_ORIGINS",
@@ -558,6 +571,14 @@ def run_scanner_preflight_health_check() -> dict:
 def require_scanner_health_or_block() -> dict:
     health_payload = run_scanner_preflight_health_check()
     if not health_payload["ok"]:
+        ph_capture(
+            "system",
+            "scanner_health_check_failed",
+            {
+                "overall_status": health_payload.get("overall_status", "blocked"),
+                "failed_check_count": len(health_payload.get("errors", [])),
+            },
+        )
         raise HTTPException(
             status_code=503,
             detail={
@@ -789,6 +810,19 @@ async def parse_uploaded_reports(
 
     (out_dir / "scan_result_summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 
+    device_id = x_credit_vivo_device_id.strip() or "anonymous"
+    ph_capture(
+        device_id,
+        "credit_report_scan_completed",
+        {
+            "file_count": len(files),
+            "tradelines_count": len(data["tradelines"]),
+            "issues_count": len(data["issues"]),
+            "letters_count": len(data.get("recommended_letter_queue", [])),
+            "scan_health_ok": bool(scanner_health_payload.get("ok")),
+        },
+    )
+
     if not RETAIN_UPLOADS:
         shutil.rmtree(job_dir, ignore_errors=True)
 
@@ -833,6 +867,15 @@ async def admin_users_create(
         raise HTTPException(status_code=401, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    ph_capture(
+        "owner_admin",
+        "admin_user_created",
+        {
+            "role": user.role,
+            "password_reset_required": user.password_reset_required,
+        },
+    )
 
     return JSONResponse({
         "ok": True,
@@ -917,10 +960,19 @@ def growth_ai_brief(
 @app.post("/growth-ai/lead-score")
 @app.post("/api/growth-ai/lead-score")
 async def growth_ai_lead_score(signals: Dict[str, bool]):
+    score = lead_score(signals)
+    ph_capture(
+        "anonymous",
+        "growth_ai_lead_scored",
+        {
+            "signal_count": len(signals),
+            "score": score,
+        },
+    )
     return JSONResponse({
         "ok": True,
         "service": "credit-vivo-growth-ai",
-        "lead_score": lead_score(signals),
+        "lead_score": score,
     })
 
 
@@ -1123,6 +1175,16 @@ async def capture_lead(payload: Dict[str, object]):
         },
     }), EVENT_LOG)
 
+    ph_capture(
+        "anonymous",
+        "lead_captured",
+        {
+            "source": lead.source,
+            "campaign": lead.campaign or "direct",
+            "goal": lead.goal,
+        },
+    )
+
     return JSONResponse({
         "ok": True,
         "service": "vivo-lead-capture",
@@ -1151,6 +1213,14 @@ async def growth_ai_outreach_plan(payload: Dict[str, object]):
         raise HTTPException(status_code=400, detail="contacts must be a list.")
 
     owner_approved = bool(payload.get("owner_approved", False))
+    ph_capture(
+        "anonymous",
+        "outreach_plan_requested",
+        {
+            "contact_count": len(contacts),
+            "owner_approved": owner_approved,
+        },
+    )
     return JSONResponse(build_outreach_plan(contacts, owner_approved=owner_approved))
 
 
@@ -1201,5 +1271,12 @@ def download_scanner_output(job_id: str, download_name: str, x_credit_vivo_scann
     path = scanner_job_dir(job_id) / filename
     if not path.exists():
         return JSONResponse({"ok": False, "error": "Scanner output not found"}, status_code=404)
+
+    device_id = x_credit_vivo_device_id.strip() or "anonymous"
+    ph_capture(
+        device_id,
+        "scan_result_downloaded",
+        {"download_type": download_name},
+    )
 
     return FileResponse(path, media_type=media_type, filename=download_filename)
