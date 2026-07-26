@@ -102,11 +102,11 @@ Do not migrate frameworks or introduce a second frontend stack without a written
 - Must not redesign Claude-owned UI files concurrently without a written transfer.
 - Must report confirmed defects separately from preferences.
 
-### Grok — Research and red-team lane
+### Research and red-team work — Unassigned
 
-- May research public competitor UX, customer objections, trust failures, confusing credit-app patterns, and claims/compliance risks.
-- Does not write production code or modify repository files unless expressly reassigned.
-- Must cite public evidence and separate facts from opinions.
+- Grok is not an active Credit Vivo team member or dependency.
+- Prior Grok material is retained only as historical, non-authoritative research input.
+- Future research or red-team work requires a new explicit assignment and independently verifiable citations.
 
 ## 6. No-overlap branch rule
 
@@ -300,10 +300,6 @@ Read this file, then return the exact Gate A acknowledgement. Do not begin deep 
 ### Codex
 
 Read `AGENTS.md`, `shared-workspace/TEAM_HANDOFF_PROTOCOL.md`, `shared-workspace/TEAM_ACTIVE_HANDOFF.md`, and this file. Return the exact Gate A acknowledgement and identify the current API/type/status contracts Claude can safely build against.
-
-### Grok
-
-Return a concise red-team brief covering Dovly-observable strengths, common customer trust failures, and claims/UX risks. Do not provide copied assets or code.
 
 ### ChatGPT
 
