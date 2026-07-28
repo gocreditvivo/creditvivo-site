@@ -25,7 +25,7 @@ function PortalPreview() {
     ['Reviewed', 'Collection account â€” payment recorded', '3 records'],
   ];
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_28px_70px_rgba(8,38,74,.14)]">
+    <div className="cv-portal-float overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_28px_70px_rgba(8,38,74,.14)]">
       <div className="flex h-10 items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-3">
         <i className="h-2 w-2 rounded-full bg-rose-300" />
         <i className="h-2 w-2 rounded-full bg-amber-300" />
@@ -66,7 +66,7 @@ function PortalPreview() {
           <div className="mt-6 grid grid-cols-5">
             {['Reports', 'AI review', 'Review points', 'Approval', 'Responses'].map((item, i) => (
               <div key={item} className="relative text-center before:absolute before:left-0 before:right-0 before:top-2 before:h-px before:bg-slate-300 first:before:left-1/2 last:before:right-1/2">
-                <i className={`relative z-10 mx-auto grid h-4 w-4 place-items-center rounded-full border text-[8px] not-italic ${i < 3 ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-400 bg-white text-slate-500'}`}>{i < 3 ? 'âœ“' : i + 1}</i>
+                <i className={`cv-progress-dot relative z-10 mx-auto grid h-4 w-4 place-items-center rounded-full border text-[8px] not-italic ${i < 3 ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-400 bg-white text-slate-500'}`} style={{ animationDelay: `${i * 180}ms` }}>{i < 3 ? 'âœ“' : i + 1}</i>
                 <small className="mt-2 block text-[8px] text-slate-500 max-sm:hidden">{item}</small>
               </div>
             ))}
@@ -82,7 +82,7 @@ export default function Home() {
     <>
       <section className="bg-white py-20 lg:py-28">
         <div className="mx-auto grid max-w-[1440px] items-center gap-14 px-6 lg:grid-cols-[.86fr_1.2fr] lg:px-10">
-          <div>
+          <div className="cv-hero-enter">
             <h1 className="max-w-[630px] text-[46px] font-extrabold leading-[.98] tracking-[-.055em] text-navy-950 sm:text-[64px] lg:text-[76px]">
               Credit improvement you can see, prove, and track.
             </h1>
@@ -91,7 +91,7 @@ export default function Home() {
               prepare dispute support, and track every bureau and furnisher response in one secure portal.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/scan" className="btn-primary rounded-md px-6 py-3.5">Start free scan <ArrowRight size={16} /></Link>
+              <Link to="/scan" className="cv-cta-shine btn-primary rounded-md px-6 py-3.5">Start free scan <ArrowRight size={16} /></Link>
               <Link to="/dashboard" className="btn-outline rounded-md px-6 py-3.5">View portal preview</Link>
             </div>
             <p className="mt-4 text-xs text-slate-500">No hard pull. You approve every next step.</p>
@@ -117,7 +117,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-white py-24">
+      <section id="how-it-works" className="cv-section-reveal bg-white py-24">
         <div className="mx-auto grid max-w-7xl gap-14 px-6 lg:grid-cols-[.65fr_1.35fr]">
           <div><h2 className="text-4xl font-bold tracking-tight text-navy-950">A clear path from report to response</h2><p className="mt-4 leading-7 text-slate-600">One guided process keeps the details organized and you in control.</p></div>
           <ol>
@@ -132,7 +132,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="ai-review" className="border-y border-slate-200 bg-sky-50/60 py-24">
+      <section id="ai-review" className="cv-section-reveal border-y border-slate-200 bg-sky-50/60 py-24">
         <div className="mx-auto grid max-w-7xl gap-14 px-6 lg:grid-cols-[.8fr_1.4fr]">
           <div><h2 className="text-4xl font-bold tracking-tight text-navy-950">Powerful review behind the scenes. Plain English in front.</h2><p className="mt-5 leading-7 text-slate-600">CreditVivo helps surface possible review points, then shows why each item deserves attention. No raw parser logs, confusing technical output, or automatic dispute sending.</p></div>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -146,14 +146,14 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="portal" className="bg-white py-24">
+      <section id="portal" className="cv-section-reveal bg-white py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 max-w-2xl"><h2 className="text-4xl font-bold tracking-tight text-navy-950">Everything connected to the right next step.</h2><p className="mt-4 leading-7 text-slate-600">Review a finding, see its source, organize evidence, and follow every response in one calm workspace.</p></div>
           <PortalPreview />
         </div>
       </section>
 
-      <section id="plans" className="border-t border-slate-200 bg-slate-50 py-24">
+      <section id="plans" className="cv-section-reveal border-t border-slate-200 bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-12 max-w-2xl text-center"><h2 className="text-4xl font-bold tracking-tight text-navy-950">Choose the level of support you need.</h2><p className="mt-4 text-slate-600">Start free. See plan details before you commit to paid support.</p></div>
           <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white md:grid-cols-2 lg:grid-cols-4">
