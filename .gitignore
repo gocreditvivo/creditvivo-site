@@ -25,3 +25,13 @@ ids/
 *.pem
 *.key
 *.pfx
+
+
+# Build artifacts and dev logs (added during production-readiness cleanup)
+.next/
+next-env.d.ts
+tsconfig.tsbuildinfo
+next-dev.log
+next-dev.err.log
+next-dev-chat.log
+next-dev-chat.err.log
