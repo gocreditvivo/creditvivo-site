@@ -82,7 +82,9 @@ export type ScannerParseResult = {
 };
 
 const SCANNER_API_URL =
-  import.meta.env.VITE_SCANNER_API_URL || 'http://localhost:8080';
+  process.env.NEXT_PUBLIC_SCANNER_API_URL ||
+  process.env.NEXT_PUBLIC_CREDIT_VIVO_API_BASE_URL ||
+  'http://localhost:8080';
 
 export async function parseCreditReports(
   files: File[],

@@ -2,12 +2,16 @@ import type { ScannerParseResult } from './scannerApi';
 
 const LAST_SCAN_KEY = 'creditVivoLastScanResult';
 
+function getBrowserStorage(): Storage | undefined {
+  return typeof window !== 'undefined' ? window.localStorage : undefined;
+}
+
 export function saveLastScanResult(result: ScannerParseResult) {
-  localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
+  getBrowserStorage()?.setItem(LAST_SCAN_KEY, JSON.stringify(result));
 }
 
 export function getLastScanResult(): ScannerParseResult | null {
-  const raw = localStorage.getItem(LAST_SCAN_KEY);
+  const raw = getBrowserStorage()?.getItem(LAST_SCAN_KEY);
   if (!raw) return null;
 
   try {
@@ -18,7 +22,7 @@ export function getLastScanResult(): ScannerParseResult | null {
 }
 
 export function clearLastScanResult() {
-  localStorage.removeItem(LAST_SCAN_KEY);
+  getBrowserStorage()?.removeItem(LAST_SCAN_KEY);
 }
 
 export function getDemoScanResult(): ScannerParseResult {

@@ -5,6 +5,7 @@ const complianceLinks = [
   ["Terms", "/terms"],
   ["Disclosure", "/disclosure"],
   ["FAQ", "/faq"],
+  ["Chat", "/chat"],
 ];
 
 export default function ComplianceFooter() {

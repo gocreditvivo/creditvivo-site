@@ -10,6 +10,7 @@ const STORAGE_KEY = 'creditVivoDemoCase';
 
 const shell = { fontFamily: 'var(--cv-font)', background: 'linear-gradient(180deg, #fffdf5 0%, #f0fdf4 48%, #eef9ff 100%)', minHeight: '100vh', color: '#102033', padding: '32px 7% 70px' };
 const card = { background: 'rgba(255,255,255,.94)', border: '1px solid #cfeee0', borderRadius: 8, padding: 20, boxShadow: '0 18px 42px rgba(16,32,51,.09)' };
+const button = { border: 0, borderRadius: 8, padding: '11px 14px', fontWeight: 900, cursor: 'pointer', background: 'linear-gradient(135deg, #0f766e, #12b981)', color: 'white', boxShadow: '0 14px 28px rgba(18,185,129,.24)' };
 
 function getCase() {
   try {
@@ -17,6 +18,26 @@ function getCase() {
   } catch {
     return demoCase;
   }
+}
+
+function downloadFindings(caseData) {
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    caseId: caseData.caseId,
+    consumerName: caseData.consumerName,
+    consumerEmail: caseData.consumerEmail,
+    status: caseData.status,
+    findings: caseData.findings || [],
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `credit-vivo-findings-${caseData.caseId || new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function FindingsClient() {
@@ -42,6 +63,7 @@ export default function FindingsClient() {
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <Link href="/dashboard">Dashboard</Link>
           <Link href="/scan">Upload</Link>
+          <Link href="/chat">Chat</Link>
           <Link href="/messages">Messages</Link>
           <Link href="/monthly">Monthly</Link>
           <Link href="/vault">Vault</Link>
@@ -49,10 +71,28 @@ export default function FindingsClient() {
         </div>
       </nav>
 
-      <h1 style={{ fontSize: 42, marginBottom: 8 }}>Findings</h1>
-      <p style={{ color: '#475569', maxWidth: 760, lineHeight: 1.65 }}>
-        This is the customer view. It explains possible problems without showing raw forensic scanner logs, Metro 2 internals, or legal conclusions.
-      </p>
+      <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 42, marginBottom: 8 }}>Findings</h1>
+          <p style={{ color: '#475569', maxWidth: 760, lineHeight: 1.65 }}>
+            This is the customer view. It explains possible problems without showing raw forensic scanner logs, Metro 2 internals, or legal conclusions.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            downloadFindings(caseData);
+            logEvent('findings_downloaded', {
+              area: 'Findings',
+              caseId: caseData.caseId,
+              findingCount: caseData.findings?.length || 0,
+            });
+          }}
+          style={button}
+        >
+          Download Findings
+        </button>
+      </section>
 
       <section style={{ display: 'grid', gap: 16, marginTop: 24 }}>
         {caseData.findings.map((finding) => (

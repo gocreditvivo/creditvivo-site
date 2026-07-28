@@ -4,6 +4,7 @@ const navLinks = [
   ["Free Scan", "/scan"],
   ["Dashboard", "/dashboard"],
   ["Findings", "/findings"],
+  ["Chat", "/chat"],
   ["Monthly", "/monthly"],
   ["Pricing", "/pricing"],
   ["Login", "/login"],
@@ -18,6 +19,7 @@ const steps = [
 
 const signals = [
   ["Simple portal", "Ready", "Customers always know what is happening next."],
+  ["Compliance chat", "Ready", "Safe answers for uploads, findings, disputes, and next steps."],
   ["Friendly updates", "Preview", "Portal updates are ready. Email and text delivery connect after vendor setup."],
   ["Staged rounds", "Ready", "We do not rush every possible issue at once."],
 ];
@@ -59,6 +61,7 @@ export default function HomePage() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
             <a href="/scan" className="cv-primary-link">Start Free Credit Scan</a>
             <a href="/dashboard" className="cv-secondary-link">View Customer Portal</a>
+            <a href="/chat" className="cv-secondary-link">Ask Compliance Chat</a>
           </div>
         </div>
       </section>

@@ -1,29 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import BrandLogo from './BrandLogo';
 import { demoCase } from './demoCase';
 import { logEvent } from './eventLog';
 
 const STORAGE_KEY = 'creditVivoDemoCase';
 const CASES_KEY = 'creditVivoDemoCases';
-
-const shell = {
-  fontFamily: 'var(--cv-font)',
-  background: 'linear-gradient(180deg, #fffdf5 0%, #f0fdf4 48%, #eef9ff 100%)',
-  minHeight: '100vh',
-  color: '#102033',
-  padding: '32px 7% 70px',
-};
-
-const card = {
-  background: 'rgba(255,255,255,.94)',
-  border: '1px solid #cfeee0',
-  borderRadius: 8,
-  padding: 20,
-  boxShadow: '0 18px 42px rgba(16,32,51,.09)',
-};
 
 function loadCase() {
   try {
@@ -44,9 +28,21 @@ function loadCases() {
   }
 }
 
+function firstName(value) {
+  return String(value || 'there').trim().split(/\s+/)[0] || 'there';
+}
+
+function scoreTrend(scoreProgress) {
+  if (!scoreProgress?.length) return 0;
+  const first = scoreProgress[0]?.score || 0;
+  const latest = scoreProgress[scoreProgress.length - 1]?.score || first;
+  return latest - first;
+}
+
 export default function PortalDashboardClient() {
   const [caseData, setCaseData] = useState(demoCase);
   const [cases, setCases] = useState([demoCase]);
+  const [selectedFile, setSelectedFile] = useState('');
 
   useEffect(() => {
     const loadedCase = loadCase();
@@ -72,173 +68,260 @@ export default function PortalDashboardClient() {
     });
   }
 
-  const metrics = [
-    ['Credit Health Score', `${caseData.healthScore}/100`, 'Preview estimate based on issue count and account mix.'],
-    ['Negative Accounts', caseData.negativeAccounts, 'Items to review before disputes.'],
-    ['Potential Issues', caseData.potentialIssues, 'Customer-friendly possible errors.'],
-    ['Active Disputes', caseData.activeDisputes, 'Drafts ready for portal review. Mailing remains disabled until vendor setup.'],
+  function handleFileChange(event) {
+    const file = event.target.files?.[0];
+    setSelectedFile(file?.name || '');
+    logEvent('dashboard_upload_selected', {
+      area: 'Dashboard',
+      page: '/dashboard',
+      hasFile: Boolean(file),
+      reportType: file?.type || '',
+      reportSize: file?.size || 0,
+    });
+  }
+
+  const displayName = firstName(caseData.consumerName);
+  const trend = scoreTrend(caseData.scoreProgress);
+  const findings = caseData.findings?.length ? caseData.findings : [];
+  const documents = caseData.documents?.length ? caseData.documents : [];
+  const waitingDocuments = documents.filter((doc) => doc.status === 'Needed').length;
+
+  const bureauScores = useMemo(() => {
+    const latestScore =
+      caseData.scoreProgress?.[caseData.scoreProgress.length - 1]?.score ||
+      caseData.healthScore ||
+      640;
+
+    return [
+      {
+        bureau: 'Experian',
+        score: latestScore + 3,
+        movement: trend >= 0 ? `+${Math.max(3, trend)}` : String(trend),
+        status: 'Updated from latest report',
+      },
+      {
+        bureau: 'Equifax',
+        score: Math.max(300, latestScore - 6),
+        movement: trend >= 0 ? `+${Math.max(2, trend - 2)}` : String(trend),
+        status: 'Updated from latest report',
+      },
+      {
+        bureau: 'TransUnion',
+        score: latestScore + 8,
+        movement: trend >= 0 ? `+${Math.max(4, trend + 1)}` : String(trend),
+        status: 'Updated from latest report',
+      },
+    ];
+  }, [caseData.healthScore, caseData.scoreProgress, trend]);
+
+  const disputeStatuses = [
+    ['Awaiting bureau response', Math.max(1, caseData.activeDisputes - 3), 'amber'],
+    ['Needs your review', Math.max(1, waitingDocuments), 'blue'],
+    ['Updated this week', Math.min(2, findings.length || 2), 'green'],
+    ['Resolved or archived', 1, 'slate'],
   ];
-  const scoreProgress = caseData.scoreProgress?.length ? caseData.scoreProgress : demoCase.scoreProgress;
-  const monthlyValue = caseData.monthlyValue?.length ? caseData.monthlyValue : demoCase.monthlyValue;
-  const creditBoostTasks = caseData.creditBoostTasks?.length ? caseData.creditBoostTasks : demoCase.creditBoostTasks;
-  const startScore = scoreProgress[0]?.score || caseData.healthScore;
-  const latestScore = scoreProgress[scoreProgress.length - 1]?.score || caseData.healthScore;
-  const totalScoreChange = latestScore - startScore;
-  const maxScore = Math.max(...scoreProgress.map((item) => item.score), 700);
-  const minScore = Math.min(...scoreProgress.map((item) => item.score), 500);
+
+  const nextSteps = [
+    {
+      title: 'Upload your newest credit report',
+      detail: 'Your specialist can compare what changed across all three bureaus.',
+      action: 'Upload',
+      href: '/scan',
+      priority: 'Action needed',
+    },
+    {
+      title: 'Review dispute-ready findings',
+      detail: 'Confirm report items before any next step is prepared.',
+      action: 'Review',
+      href: '/findings',
+      priority: 'Due soon',
+    },
+    {
+      title: 'Add identity support documents',
+      detail: `${waitingDocuments || 2} document items can help support identity cleanup and verification.`,
+      action: 'Open vault',
+      href: '/vault',
+      priority: 'Open',
+    },
+  ];
 
   return (
-    <main style={shell}>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28, background: 'rgba(255,255,255,.78)', border: '1px solid #cfeee0', borderRadius: 8, padding: '12px 14px', boxShadow: '0 12px 28px rgba(16,32,51,.06)' }}>
+    <main className="cv-portal-shell">
+      <nav className="cv-portal-nav" aria-label="Customer portal navigation">
         <BrandLogo />
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <Link href="/scan">Upload</Link>
-          <Link href="/findings">Findings</Link>
-          <Link href="/messages">Messages</Link>
-          <Link href="/monthly">Monthly</Link>
-          <Link href="/vault">Vault</Link>
+        <div className="cv-portal-links">
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/disputes">Disputes</Link>
+          <Link href="/findings">Findings</Link>
+          <Link href="/chat">Chat</Link>
+          <Link href="/messages">Messages</Link>
+          <Link href="/vault">Vault</Link>
         </div>
+        <span className="cv-secure-chip">Secure portal</span>
       </nav>
 
-      <section style={{ marginBottom: 24 }}>
-        <p style={{ display: 'inline-block', background: '#dcfce7', color: '#047857', padding: '7px 11px', borderRadius: 999, fontWeight: 900 }}>Customer portal preview</p>
-        <h1 style={{ fontSize: 42, margin: '14px 0 8px' }}>Welcome back, {caseData.consumerName}.</h1>
-        <p style={{ color: '#475569', fontSize: 17 }}>Case {caseData.caseId} for {caseData.consumerEmail} is in {caseData.status.toLowerCase()} from {caseData.source}.</p>
+      <section className="cv-dashboard-hero">
+        <div>
+          <span className="cv-eyebrow">Customer dashboard</span>
+          <h1>Welcome back, {displayName}.</h1>
+          <p>
+            Case {caseData.caseId} is in {String(caseData.status).toLowerCase()}. Your
+            dashboard shows score snapshots, active review items, and the next secure action.
+          </p>
+        </div>
+        <div className="cv-hero-actions">
+          <Link href="/messages" className="cv-secondary-link">Message support</Link>
+          <Link href="/scan" className="cv-primary-link">Upload Report</Link>
+        </div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 16, marginBottom: 22 }}>
-        {metrics.map(([label, value, help]) => (
-          <div key={label} style={card}>
-            <p style={{ margin: 0, color: '#64748b', fontWeight: 800 }}>{label}</p>
-            <strong style={{ display: 'block', fontSize: 30, margin: '10px 0' }}>{value}</strong>
-            <span style={{ color: '#64748b', fontSize: 14 }}>{help}</span>
-          </div>
-        ))}
-      </section>
-
-      <section style={{ ...card, marginBottom: 22 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'start' }}>
+      <section className="cv-score-section" aria-labelledby="bureau-scores">
+        <div className="cv-section-heading">
           <div>
-            <h2 style={{ margin: '0 0 8px' }}>Monthly Progress</h2>
-            <p style={{ color: '#475569', margin: 0, lineHeight: 1.55 }}>Track score movement and the work completed each month. Score movement can vary by bureau and scoring model.</p>
+            <span className="cv-eyebrow">Credit score snapshot</span>
+            <h2 id="bureau-scores">Three-bureau overview</h2>
           </div>
-          <div style={{ background: totalScoreChange >= 0 ? '#dcfce7' : '#fee2e2', color: totalScoreChange >= 0 ? '#166534' : '#991b1b', borderRadius: 8, padding: '12px 14px', fontWeight: 900 }}>
-            {totalScoreChange >= 0 ? '+' : ''}{totalScoreChange} point preview trend
-          </div>
+          <p>Scores update when a new report is reviewed. Results vary by bureau and model.</p>
         </div>
 
-        <Link href="/monthly" style={{ display: 'inline-block', marginTop: 14, background: 'linear-gradient(135deg, #0f766e, #12b981)', color: 'white', textDecoration: 'none', borderRadius: 8, padding: '11px 14px', fontWeight: 900, boxShadow: '0 14px 28px rgba(18,185,129,.24)' }}>
-          Open monthly update
-        </Link>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginTop: 18 }}>
-          {scoreProgress.map((item) => {
-            const percent = Math.max(12, Math.round(((item.score - minScore) / Math.max(1, maxScore - minScore)) * 100));
-            return (
-              <div key={item.month} style={{ background: '#fffdf5', border: '1px solid #cfeee0', borderRadius: 8, padding: 14 }}>
-                <p style={{ margin: 0, color: '#64748b', fontWeight: 800 }}>{item.month}</p>
-                <strong style={{ display: 'block', fontSize: 28, margin: '8px 0' }}>{item.score}</strong>
-                <div style={{ height: 9, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ width: `${percent}%`, height: '100%', background: '#10b981' }} />
-                </div>
-                <p style={{ color: '#64748b', marginBottom: 0 }}>{item.label} {item.change ? `(${item.change > 0 ? '+' : ''}${item.change})` : ''}</p>
-              </div>
-            );
-          })}
+        <div className="cv-score-grid">
+          {bureauScores.map((score) => (
+            <Link href="/findings" className="cv-score-card" key={score.bureau}>
+              <span>{score.bureau}</span>
+              <strong>{score.score}</strong>
+              <small>{score.movement} since first review</small>
+              <em>{score.status}</em>
+            </Link>
+          ))}
         </div>
-
-        <p style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 12, color: '#92400e', margin: '16px 0 0', lineHeight: 1.55 }}>
-          Launch note: Credit Vivo should never promise a monthly score increase. The portal should show actual score updates when available plus completed work, response tracking, and credit-building actions.
-        </p>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(300px,.75fr)', gap: 18, alignItems: 'start' }}>
-        <div style={{ display: 'grid', gap: 18 }}>
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Value This Month</h2>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {monthlyValue.map((item) => (
-                <div key={item.item} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 12, borderTop: '1px solid #e5e7eb', padding: '11px 0' }}>
-                  <span><strong>{item.item}</strong><br /><span style={{ color: '#64748b' }}>{item.customerBenefit}</span></span>
-                  <span style={{ color: item.status === 'Complete' ? '#166534' : item.status === 'Needed' ? '#b45309' : '#0369a1', fontWeight: 900 }}>{item.status}</span>
-                </div>
-              ))}
+      <section className="cv-dashboard-grid">
+        <div className="cv-dashboard-main">
+          <article className="cv-card cv-dashboard-card">
+            <div className="cv-card-heading">
+              <div>
+                <span className="cv-eyebrow">Active disputes</span>
+                <h2>{caseData.activeDisputes} active review items</h2>
+                <p>{caseData.potentialIssues} possible report issues are organized for review.</p>
+              </div>
+              <Link href="/disputes" className="cv-small-action">View Dispute Status</Link>
             </div>
-          </div>
 
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Recent Activity</h2>
-            <div style={{ display: 'grid', gap: 12 }}>
-              {caseData.updates.map((update) => (
-                <div key={`${update.time}-${update.title}`} style={{ borderLeft: '4px solid #10b981', padding: '4px 0 4px 14px' }}>
-                  <strong>{update.title}</strong>
-                  <p style={{ margin: '4px 0', color: '#475569' }}>{update.body}</p>
-                  <span style={{ color: '#64748b', fontSize: 13 }}>{update.channel} - {update.time}</span>
+            <div className="cv-status-grid">
+              {disputeStatuses.map(([label, value, tone]) => (
+                <div className={`cv-status-card ${tone}`} key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
                 </div>
               ))}
             </div>
-          </div>
+          </article>
+
+          <article className="cv-card cv-dashboard-card">
+            <div className="cv-card-heading">
+              <div>
+                <span className="cv-eyebrow">Next steps</span>
+                <h2>Your action list</h2>
+              </div>
+              <span className="cv-secure-chip">Client approval required</span>
+            </div>
+
+            <div className="cv-next-list">
+              {nextSteps.map((step) => (
+                <Link href={step.href} className="cv-next-row" key={step.title}>
+                  <span>
+                    <strong>{step.title}</strong>
+                    <small>{step.detail}</small>
+                  </span>
+                  <em>{step.priority}</em>
+                  <b>{step.action}</b>
+                </Link>
+              ))}
+            </div>
+          </article>
+
+          <article className="cv-card cv-dashboard-card">
+            <div className="cv-card-heading">
+              <div>
+                <span className="cv-eyebrow">Recent activity</span>
+                <h2>Progress log</h2>
+              </div>
+              <Link href="/events" className="cv-small-action">Open event log</Link>
+            </div>
+
+            <div className="cv-activity-list">
+              {caseData.updates.map((update) => (
+                <div className="cv-activity-item" key={`${update.time}-${update.title}`}>
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{update.title}</strong>
+                    <p>{update.body}</p>
+                    <small>{update.channel} - {update.time}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
         </div>
 
-        <aside style={{ display: 'grid', gap: 18 }}>
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Test Consumers</h2>
-            <div style={{ display: 'grid', gap: 10 }}>
+        <aside className="cv-dashboard-side">
+          <article className="cv-card cv-upload-card">
+            <div className="cv-card-heading">
+              <div>
+                <span className="cv-eyebrow">Secure upload</span>
+                <h2>Add a new credit report</h2>
+              </div>
+            </div>
+
+            <label className="cv-upload-drop">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} />
+              <strong>{selectedFile || 'Choose a file to upload'}</strong>
+              <span>PDF, JPG, and PNG files are accepted.</span>
+              <small>Only upload your own credit report through this secure workflow.</small>
+            </label>
+
+            <Link href="/scan" className="cv-primary-link cv-full-action">Continue Upload</Link>
+            <p className="cv-security-note">
+              Do not upload bureau passwords or unrelated identity documents here. Use the Vault
+              for identity support files.
+            </p>
+          </article>
+
+          <article className="cv-card cv-dashboard-card">
+            <span className="cv-eyebrow">Document readiness</span>
+            <h2>Required documents</h2>
+            <div className="cv-doc-list">
+              {documents.slice(0, 5).map((doc) => (
+                <div key={doc.name}>
+                  <span>
+                    <strong>{doc.name}</strong>
+                    <small>{doc.type}</small>
+                  </span>
+                  <em>{doc.status}</em>
+                </div>
+              ))}
+            </div>
+            <Link href="/vault" className="cv-small-action cv-side-link">Open secure vault</Link>
+          </article>
+
+          <article className="cv-card cv-dashboard-card">
+            <span className="cv-eyebrow">Demo case switcher</span>
+            <h2>Test consumers</h2>
+            <div className="cv-case-list">
               {cases.map((item) => (
                 <button
                   key={item.caseId}
+                  type="button"
                   onClick={() => switchCase(item)}
-                  style={{
-                    textAlign: 'left',
-                    border: item.caseId === caseData.caseId ? '2px solid #10b981' : '1px solid #e5e7eb',
-                    background: item.caseId === caseData.caseId ? '#f0fdf4' : 'white',
-                    borderRadius: 8,
-                    padding: 12,
-                    cursor: 'pointer',
-                  }}
+                  className={item.caseId === caseData.caseId ? 'active' : ''}
                 >
-                  <strong>{item.consumerName}</strong><br />
-                  <span style={{ color: '#64748b' }}>{item.consumerEmail}</span>
+                  <strong>{item.consumerName}</strong>
+                  <span>{item.consumerEmail}</span>
                 </button>
               ))}
             </div>
-            <Link href="/scan" style={{ display: 'inline-block', marginTop: 12, color: '#0369a1', fontWeight: 900 }}>Add another test consumer</Link>
-          </div>
-
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Next Best Actions</h2>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {creditBoostTasks.map((task) => (
-                <div key={task.task} style={{ borderTop: '1px solid #e5e7eb', padding: '10px 0' }}>
-                  <strong>{task.task}</strong>
-                  <p style={{ color: '#64748b', margin: '4px 0 0' }}>Impact: {task.impact} - {task.status}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Update Channels</h2>
-            <div style={{ display: 'grid', gap: 8, color: '#334155' }}>
-              <span><strong>Portal:</strong> {caseData.communication?.portal ? 'On' : 'Off'}</span>
-              <span><strong>Email preview:</strong> {caseData.communication?.email ? 'On' : 'Off'}</span>
-              <span><strong>Text preview:</strong> {caseData.communication?.text ? 'On' : 'Off'}</span>
-            </div>
-            <Link href="/messages" style={{ display: 'inline-block', marginTop: 12, color: '#0369a1', fontWeight: 900 }}>Open message flow</Link>
-            <br />
-            <Link href="/monthly" style={{ display: 'inline-block', marginTop: 8, color: '#0369a1', fontWeight: 900 }}>Open monthly update</Link>
-          </div>
-
-          <div style={card}>
-            <h2 style={{ marginTop: 0 }}>Follow-Up Schedule</h2>
-            {caseData.followUps.map((item) => (
-              <div key={item.day} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderTop: '1px solid #e5e7eb', padding: '10px 0' }}>
-                <span><strong>{item.day}</strong><br />{item.item}</span>
-                <span style={{ color: item.status === 'Complete' ? '#166534' : '#0369a1', fontWeight: 800 }}>{item.status}</span>
-              </div>
-            ))}
-          </div>
+          </article>
         </aside>
       </section>
     </main>

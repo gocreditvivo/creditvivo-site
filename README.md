@@ -1,83 +1,54 @@
+# CreditVivo V1 Clean Frontend Upgrade
 
+This package upgrades the customer-facing website to feel closer to leading credit-improvement companies while staying original and compliance-safe.
 
-# Credit Vivo Bolt Build — Reviewed Version
+## Included
 
-## What was fixed
-- Removed an unused TypeScript import so `npm run typecheck` passes.
-- Added `public/_redirects` for static SPA hosting.
-- Added `vercel.json` rewrite support for Vercel deployment.
+- `demo/index.html` — clean landing page demo
+- `demo/login.html` — clean secure client-login page demo
+- `demo/styles.css` — shared responsive CSS
+- `codex_frontend_prompt.md` — exact prompt for Codex to apply this style to the live repo
+- `src/app/page.tsx` — Next.js landing page starter
+- `src/app/login/page.tsx` — Next.js login page starter
+- `src/app/globals.css` — Next.js CSS starter based on the demo
 
-## Run locally
-```bash
-npm install
-npm run dev
-```
+## Design direction
 
-## Verify before deploy
-```bash
-npm run typecheck
-npm run build
-```
+- Premium fintech style
+- Simple customer wording
+- No raw scanner/forensic logs on the landing page
+- Clear plan cards
+- App-style dashboard preview
+- Attorney escalation shown carefully, only for eligible cases
+- Compliance-safe footer disclaimer
 
-## Notes
-This is still a demo/public website. Real authentication, payments, report uploads, and credit-processing backend are not connected yet.
+## Public-facing positioning
 
-## v15.1 Content Audit + Layout Lock
+Credit improvement you can see, prove, and track.
 
-This package adds:
-- `CONTENT_AUDIT_V15_1.md`
-- `FEATURE_LAYOUT_LOCK_RULES.md`
-- `NEXT_FEATURE_PROMPT_LAYOUT_SAFE.md`
-- Restored content source docs from the v14.3 handoff package
+CreditVivo uses AI to review credit reports, identify possible inaccuracies, organize evidence, prepare dispute support, and track every bureau and furnisher response.
 
-No public layout files were changed in v15.1.
+## Safe language
 
+Use:
+- Possible error
+- Possible inconsistency
+- Evidence needed
+- Recommended next step
+- Attorney review if eligible
 
-## v15.2 Parser/Scanner Integration Handoff
+Avoid:
+- Guaranteed deletion
+- Guaranteed score increase
+- We remove all negatives
+- LegalShield-backed unless partnership is signed
+- Attorney reviewed unless actually reviewed
 
-This build includes a layout-safe parser/scanner integration package.
+## How to preview
 
-Added:
-- `scanner_backend/` FastAPI backend adapter
-- `src/lib/scannerApi.ts` frontend API helper
-- `SCANNER_INTEGRATION_PROMPT_FOR_BOLT.md`
-- `SCANNER_API_CONTRACT.md`
-- `PARSER_SCANNER_UPDATE_NOTES_V12_9.md`
-- `ENV_FRONTEND_EXAMPLE.env`
+Open:
 
-Public page layout was not changed.
+- `demo/index.html`
+- `demo/login.html`
 
-
-## v15.3 Note
-This version removes Anthropic/Claude and PyMuPDF dependencies. It uses Credit Vivo Native Parser with no paid AI API.
-
-
-## v16 Proprietary Parser Engine Upgrade
-
-This version adds the stronger Credit Vivo Proprietary Parser Engine.
-
-Added:
-- `scanner_backend/credit_vivo_proprietary_engine.py`
-- normalized tradeline schema
-- issue detection engine
-- cross-bureau matching
-- confidence scoring
-- evidence snippets
-- JSON/CSV outputs
-- parser tests
-- competitive moat plan
-- v16→v20 roadmap
-
-Public website layout was not changed.
-
-
-## v16.1 Integration Fix
-
-Bolt was missing the actual UI wiring between the member pages and the parser backend.
-
-Fixed:
-- `/scan` now accepts PDF upload and calls scanner backend.
-- `/findings` now reads the last scan result.
-- `/dashboard` now reflects scan result counts.
-- `/admin-review` added for internal review preview.
-- Public layout remains locked.
+in any browser.

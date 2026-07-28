@@ -155,6 +155,7 @@ export default function ScanSimulationClient() {
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <Link href="/dashboard">Dashboard</Link>
           <Link href="/findings">Findings</Link>
+          <Link href="/chat">Chat</Link>
           <Link href="/messages">Messages</Link>
           <Link href="/monthly">Monthly</Link>
           <Link href="/vault">Vault</Link>

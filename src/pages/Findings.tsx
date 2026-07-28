@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowRight, CheckCircle, FileSearch, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle, Download, FileSearch, ShieldCheck } from 'lucide-react';
 import { getLastScanResult } from '../lib/scanStorage';
 
 const categoryNames = [
@@ -39,6 +39,32 @@ function countCategory(label: string, result: ReturnType<typeof getLastScanResul
   }).length;
 
   return Math.max(fromIssues, fromItems);
+}
+
+function downloadFindings(result: NonNullable<ReturnType<typeof getLastScanResult>>) {
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    jobId: result.job_id,
+    status: result.status,
+    summary: result.customer_summary,
+    files: result.files || [],
+    reviewItemsCount: result.review_items_count || 0,
+    reviewItemsPreview: result.review_items_preview || [],
+    issuesCount: result.issues_count || 0,
+    issuesPreview: result.issues_preview || [],
+    crossBureauGroups: result.cross_bureau_groups || [],
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `credit-vivo-findings-${result.job_id || new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function Findings() {
@@ -85,14 +111,26 @@ export default function Findings() {
       <p className="text-[11px] font-semibold uppercase tracking-widest text-sky-600 mb-1">
         Member Flow
       </p>
-      <h1 className="text-xl font-bold text-navy-900 mb-1">
-        Your Findings are organized.
-      </h1>
-      <p className="text-sm text-navy-400 mb-6 max-w-2xl">
-        {result.customer_summary?.message ||
-          result.customer_message ||
-          'Credit Vivo organized your review items. Nothing is sent without approval.'}
-      </p>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-navy-900 mb-1">
+            Your Findings are organized.
+          </h1>
+          <p className="text-sm text-navy-400 max-w-2xl">
+            {result.customer_summary?.message ||
+              result.customer_message ||
+              'Credit Vivo organized your review items. Nothing is sent without approval.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => downloadFindings(result)}
+          className="btn-primary text-xs py-2.5 justify-center shrink-0"
+        >
+          Download Findings
+          <Download size={14} />
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {stats.map((s) => (
