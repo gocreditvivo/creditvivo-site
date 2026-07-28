@@ -29,17 +29,11 @@ function Header() {
 function Footer() {
   return (
     <footer className="bg-[#06264c] py-12 text-slate-300">
-      <div className="mx-auto grid max-w-7xl gap-9 px-6 md:grid-cols-[.55fr_1.4fr_auto]">
+      <div className="mx-auto grid max-w-7xl gap-9 px-6 md:grid-cols-[1fr_auto]">
         <div>
           <Link to="/" className="text-lg font-bold text-white">Credit<span className="text-emerald-300">Vivo</span></Link>
           <p className="mt-2 text-xs text-slate-400">Secure. Transparent. Human-first.</p>
         </div>
-        <p className="text-[11px] leading-5 text-slate-400">
-          CreditVivo does not guarantee score increases, approvals, or deletion of accurate, current,
-          and verifiable information. Consumers may dispute information directly with credit bureaus
-          and furnishers for free. Attorney services, if available, require separate eligibility review
-          and attorney engagement.
-        </p>
         <nav className="flex flex-wrap gap-4 text-xs">
           <Link to="/privacy" className="hover:text-white">Privacy</Link>
           <Link to="/terms" className="hover:text-white">Terms</Link>
