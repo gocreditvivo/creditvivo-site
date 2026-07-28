@@ -1,79 +1,77 @@
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  CheckCircle,
-  TrendingUp,
-  BrainCircuit,
-  Scale,
-  FileSearch,
-  Sparkles,
-  Calendar,
-} from 'lucide-react';
+import { ArrowRight, Check, FileCheck2, LockKeyhole, Scale, ShieldCheck } from 'lucide-react';
 
-function HeroCard() {
+const steps = [
+  ['Get your reports', 'Securely import your Experian, Equifax, and TransUnion reports.'],
+  ['Start a secure review', 'Review your reports in one private, guided workspace.'],
+  ['Understand possible review points', 'See plain-English findings that may deserve a closer look.'],
+  ['Organize supporting records', 'Keep statements, letters, and notes connected to the right item.'],
+  ['Approve each next step', 'You stay in control before any dispute support moves forward.'],
+  ['Track responses and updates', 'Follow bureau and furnisher replies without juggling spreadsheets.'],
+];
+
+const plans = [
+  ['Free Scan', 'Start with a secure review of your reports.', ['Import 3-bureau reports', 'Plain-English summary', 'Possible review points', 'Portal access']],
+  ['AI Guided', 'Go deeper with evidence and response tools.', ['Everything in Free Scan', 'Unlimited review points', 'Evidence organizer', 'Response tracking']],
+  ['Plus Managed', 'Get expert guidance while you stay in control.', ['Everything in AI Guided', 'Expert case review', 'Strategy recommendations', 'Ongoing tracking']],
+  ['Legal Review', 'A separate attorney path for eligible matters.', ['Eligibility screening', 'Independent attorney review', 'Separate engagement', 'Clear next steps']],
+];
+
+function PortalPreview() {
+  const bureaus = [['Experian', 'Reviewed', 'bg-fuchsia-700'], ['Equifax', 'In review', 'bg-rose-700'], ['TransUnion', 'In review', 'bg-sky-600']];
+  const findings = [
+    ['Needs review', 'Late payment reported 03/2023', '2 records'],
+    ['Needs review', 'Account balance may be incomplete', '1 record'],
+    ['Reviewed', 'Collection account â€” payment recorded', '3 records'],
+  ];
   return (
-    <div className="lively-hero-card w-full max-w-sm rounded-xl border border-white/70 bg-white/92 p-5 shadow-xl shadow-navy-900/14 backdrop-blur">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">Your Roadmap</p>
-          <p className="mt-0.5 text-sm font-bold text-navy-900">AI + Attorney Review</p>
-        </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-cyan-100">
-          <TrendingUp size={16} className="text-emerald-700" />
-        </div>
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_28px_70px_rgba(8,38,74,.14)]">
+      <div className="flex h-10 items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-3">
+        <i className="h-2 w-2 rounded-full bg-rose-300" />
+        <i className="h-2 w-2 rounded-full bg-amber-300" />
+        <i className="h-2 w-2 rounded-full bg-emerald-300" />
+        <b className="ml-2 text-[11px] text-slate-600">CreditVivo portal</b>
+        <span className="ml-auto text-[10px] text-slate-400">Secure preview</span>
       </div>
-      <div className="space-y-2.5">
-        {[
-          { label: 'AI scan completed', done: true },
-          { label: 'Errors prioritized', done: true },
-          { label: 'Attorney review option checked', done: false },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-2.5 rounded-lg bg-navy-50/70 px-3 py-2">
-            <div className={`flex h-5 w-5 items-center justify-center rounded-full ${item.done ? 'bg-emerald-600' : 'bg-rose-200'}`}>
-              {item.done && <CheckCircle size={12} className="text-white" />}
-            </div>
-            <span className={`text-xs font-medium ${item.done ? 'text-navy-700' : 'text-navy-400'}`}>
-              {item.label}
-            </span>
+      <div className="grid min-h-[390px] grid-cols-[130px_1fr] max-sm:grid-cols-1">
+        <aside className="bg-gradient-to-b from-[#082f5b] to-[#061f40] p-4 text-white max-sm:hidden">
+          <b className="mb-7 block text-sm">CreditVivo</b>
+          {['Overview', 'Reports', 'Review points', 'Evidence', 'Responses'].map((item, i) => (
+            <span key={item} className={`mb-2 block rounded px-2 py-2 text-[10px] ${i === 0 ? 'bg-emerald-600' : 'text-slate-300'}`}>{item}</span>
+          ))}
+        </aside>
+        <div className="min-w-0 bg-slate-50 p-5 max-sm:p-4">
+          <div className="mb-4 flex items-start justify-between">
+            <div><small className="text-[10px] text-slate-500">Your credit workspace</small><h3 className="text-lg font-bold text-navy-900">Report review</h3></div>
+            <span className="text-[10px] text-slate-400">Updated today</span>
           </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-2 border-t border-navy-100/60 pt-3">
-        <div className="h-2 w-2 rounded-full bg-rose-500" />
-        <span className="text-[11px] text-navy-500">Draft review only</span>
-      </div>
-    </div>
-  );
-}
-
-function HeroVisual() {
-  return (
-    <div className="lively-hero-visual relative mx-auto w-full max-w-[520px]">
-      <div className="lively-spark lively-spark-one" />
-      <div className="lively-spark lively-spark-two" />
-      <div className="absolute -right-5 -top-8 z-10 w-56 rounded-xl border border-white/80 bg-white/95 p-4 shadow-xl shadow-navy-900/12 backdrop-blur">
-        <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
-          AI scanner path
-        </p>
-        <div className="mt-2 grid gap-1.5 text-[11px] font-semibold text-navy-700">
-          <span>Soft report pull</span>
-          <span>Raw report parsing</span>
-          <span>File ready for review</span>
+          <div className="mb-3 grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+            {bureaus.map(([name, status, color], i) => (
+              <div key={name} className={`flex items-center gap-2 rounded border border-slate-200 bg-white p-2.5 ${i > 0 ? 'max-sm:hidden' : ''}`}>
+                <b className={`grid h-6 w-6 place-items-center rounded-full text-[10px] text-white ${color}`}>{name[0]}</b>
+                <span><strong className="block text-[10px] text-navy-800">{name}</strong><small className="text-[9px] text-slate-500">{status}</small></span>
+              </div>
+            ))}
+          </div>
+          <div className="rounded border border-slate-200 bg-white">
+            <div className="flex justify-between border-b border-slate-200 p-3 text-[10px]"><b>Possible review points</b><span className="text-emerald-700">View all</span></div>
+            {findings.map(([status, item, records]) => (
+              <div key={item} className="grid grid-cols-[80px_1fr_52px] gap-2 border-b border-slate-100 p-3 text-[9px] last:border-0 max-sm:grid-cols-[72px_1fr]">
+                <b className={status === 'Reviewed' ? 'text-emerald-700' : 'text-amber-700'}>{status}</b>
+                <span className="truncate text-slate-700">{item}</span>
+                <small className="text-right text-slate-400 max-sm:hidden">{records}</small>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 grid grid-cols-5">
+            {['Reports', 'AI review', 'Review points', 'Approval', 'Responses'].map((item, i) => (
+              <div key={item} className="relative text-center before:absolute before:left-0 before:right-0 before:top-2 before:h-px before:bg-slate-300 first:before:left-1/2 last:before:right-1/2">
+                <i className={`relative z-10 mx-auto grid h-4 w-4 place-items-center rounded-full border text-[8px] not-italic ${i < 3 ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-400 bg-white text-slate-500'}`}>{i < 3 ? 'âœ“' : i + 1}</i>
+                <small className="mt-2 block text-[8px] text-slate-500 max-sm:hidden">{item}</small>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl shadow-navy-900/18">
-        <img
-          src="/brand/credit-vivo-hero.png"
-          alt="Credit Vivo dashboard preview"
-          className="h-[360px] w-full object-cover object-center"
-        />
-      </div>
-      <div className="lively-score-card rounded-xl border border-white/80 bg-white/95 p-4 shadow-xl shadow-navy-900/16 backdrop-blur">
-        <b className="block text-4xl leading-none text-emerald-600">AI</b>
-        <span className="text-[11px] font-extrabold uppercase text-navy-500">review engine</span>
-      </div>
-      <div className="lively-check-card">
-        <HeroCard />
       </div>
     </div>
   );
@@ -82,224 +80,100 @@ function HeroVisual() {
 export default function Home() {
   return (
     <>
-      {/* Hero */}
-      <section className="lively-hero-bg overflow-hidden py-14 md:py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
-            <div className="relative z-10">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-lg border border-emerald-100 bg-white/85 px-4 py-2 text-sm font-bold text-emerald-800 shadow-sm shadow-emerald-900/5">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                No hard pull to start
-              </div>
-
-              <h1 className="mb-4 text-[34px] font-bold leading-tight text-navy-900 sm:text-[40px]">
-                AI Credit Review + Attorney Escalation
-              </h1>
-
-              <p className="text-base text-navy-500 leading-relaxed mb-6 max-w-xl">
-                Credit Vivo uses advanced AI to analyze your credit report. See your errors in plain English, track your progress, and seamlessly prepare your file for attorney review when the situation demands it.
-              </p>
-
-              <div className="mb-8 flex flex-wrap gap-3">
-                <a href="/dashboard.html" className="btn-primary text-sm py-3 px-6">
-                  Start Free Credit Check-In
-                  <ArrowRight size={15} />
-                </a>
-                <Link to="/why" className="btn-outline text-sm py-3 px-6">
-                  Why Credit Vivo
-                </Link>
-              </div>
-
-              <div className="flex flex-wrap gap-4">
-                {['Plain-English review', 'Attorney support when needed', 'No hard pull to start'].map((t) => (
-                  <span key={t} className="flex items-center gap-1.5 text-[12px] text-navy-500">
-                    <CheckCircle size={13} className="text-emerald-700" />
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-6 rounded-xl border border-emerald-100 bg-white/85 p-4 shadow-sm shadow-emerald-900/5 lg:hidden">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
-                  What happens next
-                </p>
-                <p className="mt-1 text-xs font-semibold text-navy-700">
-                  Check your report, understand issues, choose next steps
-                </p>
-              </div>
+      <section className="bg-white py-20 lg:py-28">
+        <div className="mx-auto grid max-w-[1440px] items-center gap-14 px-6 lg:grid-cols-[.86fr_1.2fr] lg:px-10">
+          <div>
+            <h1 className="max-w-[630px] text-[46px] font-extrabold leading-[.98] tracking-[-.055em] text-navy-950 sm:text-[64px] lg:text-[76px]">
+              Credit improvement you can see, prove, and track.
+            </h1>
+            <p className="mt-7 max-w-[610px] text-[17px] leading-8 text-slate-600">
+              CreditVivo helps you review your credit reports, spot possible inaccuracies, organize evidence,
+              prepare dispute support, and track every bureau and furnisher response in one secure portal.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to="/scan" className="btn-primary rounded-md px-6 py-3.5">Start free scan <ArrowRight size={16} /></Link>
+              <Link to="/dashboard" className="btn-outline rounded-md px-6 py-3.5">View portal preview</Link>
             </div>
-
-            <div className="hidden justify-center lg:flex">
-              <HeroVisual />
-            </div>
+            <p className="mt-4 text-xs text-slate-500">No hard pull. You approve every next step.</p>
           </div>
+          <PortalPreview />
         </div>
       </section>
 
-      {/* Trust strip */}
-      <section className="border-y border-navy-100/70 bg-white py-7">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {['Free Check-In', 'Plain English', 'Review Options', 'Attorney Access', 'Progress Tracking'].map((item) => (
-              <div key={item} className="lively-trust-pill text-center py-2">
-                <span className="text-xs font-semibold text-navy-600">{item}</span>
-              </div>
+      <section className="border-y border-slate-200 bg-sky-50/60">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-1 px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-10">
+          {[
+            [ShieldCheck, 'No hard pull', 'Reviewing your reports does not impact your score.'],
+            [FileCheck2, 'Evidence-based review', 'Findings connect to report details and records you provide.'],
+            [LockKeyhole, 'Secure document vault', 'Keep sensitive records in one private workspace.'],
+            [Scale, 'Attorney review if eligible', 'Legal services require separate eligibility and engagement.'],
+          ].map(([Icon, title, copy]) => {
+            const TrustIcon = Icon as typeof ShieldCheck;
+            return <div key={String(title)} className="flex gap-4 border-b border-slate-200 py-7 lg:border-b-0 lg:border-r lg:px-6 lg:last:border-0">
+              <TrustIcon className="shrink-0 text-emerald-700" size={28} />
+              <p><b className="block text-sm text-navy-900">{String(title)}</b><small className="mt-1 block text-[11px] leading-5 text-slate-500">{String(copy)}</small></p>
+            </div>;
+          })}
+        </div>
+      </section>
+
+      <section id="how-it-works" className="bg-white py-24">
+        <div className="mx-auto grid max-w-7xl gap-14 px-6 lg:grid-cols-[.65fr_1.35fr]">
+          <div><h2 className="text-4xl font-bold tracking-tight text-navy-950">A clear path from report to response</h2><p className="mt-4 leading-7 text-slate-600">One guided process keeps the details organized and you in control.</p></div>
+          <ol>
+            {steps.map(([title, copy], i) => (
+              <li key={title} className="grid grid-cols-[40px_210px_1fr] items-center gap-5 border-b border-slate-200 py-5 max-sm:grid-cols-[36px_1fr]">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-700 text-xs font-bold text-white">{i + 1}</span>
+                <strong className="text-sm text-navy-900">{title}</strong>
+                <p className="m-0 text-sm leading-6 text-slate-500 max-sm:col-start-2">{copy}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      {/* Vision section */}
-      <section className="bg-gradient-to-br from-navy-950 via-navy-900 to-emerald-950 py-14">
-        <div className="mx-auto max-w-7xl px-6 text-center">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-200">Simple credit help</p>
-          <h2 className="mb-3 text-[22px] font-semibold text-white sm:text-[26px]">
-            Know what is wrong. <span className="text-amber-300">Know what to do next.</span>
-          </h2>
-          <p className="text-sm text-navy-300 max-w-lg mx-auto mb-10">
-            Credit Vivo reviews your report, explains possible problems in normal language, and helps organize the next step if something needs to be challenged.
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section id="ai-review" className="border-y border-slate-200 bg-sky-50/60 py-24">
+        <div className="mx-auto grid max-w-7xl gap-14 px-6 lg:grid-cols-[.8fr_1.4fr]">
+          <div><h2 className="text-4xl font-bold tracking-tight text-navy-950">Powerful review behind the scenes. Plain English in front.</h2><p className="mt-5 leading-7 text-slate-600">CreditVivo helps surface possible review points, then shows why each item deserves attention. No raw parser logs, confusing technical output, or automatic dispute sending.</p></div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { title: 'Check', desc: 'Look for possible report problems without a hard pull.' },
-              { title: 'Explain', desc: 'Show the issues in plain English, not credit bureau jargon.' },
-              { title: 'Prepare', desc: 'Organize documents and draft next steps before anything is sent.' },
-              { title: 'Track', desc: 'Follow what happened, what is waiting, and what comes next.' },
-            ].map((g) => (
-              <div key={g.title} className="lively-dark-card rounded-xl border border-white/10 bg-white/[0.04] p-5 text-left">
-                <h3 className="text-sm font-bold text-white mb-1">{g.title}</h3>
-                <p className="text-xs text-navy-300">{g.desc}</p>
-              </div>
-            ))}
+              ['01', 'Report analysis', 'Cross-checks account details, dates, balances, and public-record data.'],
+              ['02', 'Plain-English findings', 'Explains each possible review point and why it was flagged.'],
+              ['03', 'Source evidence', 'Keeps report details and your supporting records together.'],
+              ['04', 'Human approval', 'You review and approve each step. Nothing is sent automatically.'],
+            ].map(([number, title, copy]) => <article key={title} className="border-l border-slate-300 pl-5"><span className="text-xs font-bold tracking-widest text-emerald-700">{number}</span><h3 className="mt-7 text-sm font-bold text-navy-900">{title}</h3><p className="mt-3 text-xs leading-6 text-slate-500">{copy}</p></article>)}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="bg-white py-14">
+      <section id="portal" className="bg-white py-24">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-sky-700">How it works</p>
-            <h2 className="text-[22px] font-semibold text-navy-900 sm:text-[26px]">
-              From free check-in to clear next steps.
-            </h2>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { num: '01', title: 'Start your free Check-In', desc: 'Upload or connect a report without affecting your score.', icon: BrainCircuit },
-              { num: '02', title: 'See possible problems', desc: 'Credit Vivo points out items that may need a closer look.', icon: FileSearch },
-              { num: '03', title: 'Review your options', desc: 'See what can be disputed, what needs proof, and what should wait.', icon: Calendar },
-              { num: '04', title: 'Get help if it is serious', desc: 'Hard cases can be prepared for attorney review when appropriate.', icon: Scale },
-            ].map(({ num, title, desc, icon: Icon }) => (
-              <div key={num} className="lively-step-card rounded-xl border border-navy-100 bg-white p-5 shadow-sm shadow-navy-100/50">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-cyan-100">
-                    <Icon size={16} className="text-emerald-700" />
-                  </div>
-                  <span className="text-xl font-bold text-rose-200">{num}</span>
-                </div>
-                <h3 className="text-sm font-bold text-navy-900 mb-1">{title}</h3>
-                <p className="text-xs text-navy-500 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
+          <div className="mb-12 max-w-2xl"><h2 className="text-4xl font-bold tracking-tight text-navy-950">Everything connected to the right next step.</h2><p className="mt-4 leading-7 text-slate-600">Review a finding, see its source, organize evidence, and follow every response in one calm workspace.</p></div>
+          <PortalPreview />
         </div>
       </section>
 
-      {/* What we help with */}
-      <section className="bg-emerald-50/35 py-14">
+      <section id="plans" className="border-t border-slate-200 bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-sky-700">What we help with</p>
-            <h2 className="text-[22px] font-semibold text-navy-900 sm:text-[26px]">
-              Smart review with human help.
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              {
-                icon: BrainCircuit,
-                title: 'AI report analysis',
-                desc: 'Review raw report data for possible errors, bureau mismatches, missing dates, duplicate reporting, collections, and charge-off issues.',
-                color: 'bg-emerald-100 text-emerald-700',
-              },
-              {
-                icon: Sparkles,
-                title: 'Dispute workflow',
-                desc: 'Prepare draft letters, supporting notes, evidence packets, and tracking details before anything is sent.',
-                color: 'bg-rose-100 text-rose-600',
-              },
-              {
-                icon: Scale,
-                title: 'Attorney support',
-                desc: 'When the issue is more serious, Credit Vivo can help prepare your file for attorney review.',
-                color: 'bg-amber-100 text-amber-700',
-              },
-            ].map(({ icon: Icon, title, desc, color }) => (
-              <div key={title} className="lively-step-card rounded-xl border border-navy-100 bg-white p-6 shadow-sm shadow-navy-100/50">
-                <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-4`}>
-                  <Icon size={18} />
-                </div>
-                <h3 className="text-[15px] font-bold text-navy-900 mb-2">{title}</h3>
-                <p className="text-sm text-navy-500 leading-relaxed">{desc}</p>
-              </div>
+          <div className="mx-auto mb-12 max-w-2xl text-center"><h2 className="text-4xl font-bold tracking-tight text-navy-950">Choose the level of support you need.</h2><p className="mt-4 text-slate-600">Start free. See plan details before you commit to paid support.</p></div>
+          <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white md:grid-cols-2 lg:grid-cols-4">
+            {plans.map(([name, copy, features], i) => (
+              <article key={String(name)} className={`border-b border-slate-200 p-7 lg:min-h-[360px] lg:border-b-0 lg:border-r lg:last:border-0 ${i === 1 ? 'shadow-[inset_0_4px_0_#087e73]' : ''}`}>
+                <h3 className="text-lg font-bold text-navy-950">{String(name)}</h3>
+                <p className="mt-3 min-h-[48px] text-xs leading-5 text-slate-500">{String(copy)}</p>
+                <ul className="my-7 space-y-3">{(features as string[]).map((feature) => <li key={feature} className="flex gap-2 text-xs text-slate-600"><Check size={14} className="text-emerald-700" />{feature}</li>)}</ul>
+                <Link to={i === 0 ? '/scan' : '/pricing'} className={i === 1 ? 'btn-primary rounded-md text-xs' : 'btn-outline rounded-md text-xs'}>{i === 0 ? 'Get started' : i === 3 ? 'Learn more' : 'See plan details'}</Link>
+              </article>
             ))}
           </div>
+          <p className="mt-4 text-center text-[11px] text-slate-500">Attorney services require separate eligibility review and attorney engagement. Not all matters will qualify.</p>
         </div>
       </section>
 
-      {/* Learning preview */}
-      <section className="bg-white py-14">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-sky-700">Learning Center</p>
-              <h2 className="text-xl font-semibold text-navy-900">Credit basics made simple.</h2>
-            </div>
-            <Link to="/learning" className="btn-soft text-xs hidden sm:flex">
-              View all lessons
-              <ArrowRight size={13} />
-            </Link>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { cat: 'Beginner', title: 'What affects your score?', desc: 'Payment history, balances, credit age, new applications, and account mix all matter.' },
-              { cat: 'Report Review', title: 'What is a collection?', desc: 'A collection means a debt may have been sent or sold to a collector.' },
-              { cat: 'Goals', title: 'Before buying a home', desc: 'Start early, keep payments on time, lower balances, and avoid new debt.' },
-            ].map((l) => (
-              <div key={l.title} className="rounded-xl border border-navy-100 bg-white p-5 shadow-sm shadow-navy-100/50">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-600">{l.cat}</span>
-                <h3 className="text-sm font-bold text-navy-900 mt-1 mb-1">{l.title}</h3>
-                <p className="text-xs text-navy-500 leading-relaxed">{l.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 sm:hidden">
-            <Link to="/learning" className="btn-soft text-xs w-full">
-              View all lessons <ArrowRight size={13} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="bg-gradient-to-br from-navy-950 via-emerald-950 to-navy-900 py-14">
-        <div className="max-w-2xl mx-auto px-4 text-center">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-200">Ready to start?</p>
-          <h2 className="mb-3 text-[22px] font-semibold text-white sm:text-[26px]">
-            Start with the AI Credit Check-In.
-          </h2>
-          <p className="text-sm text-navy-300 mb-6">
-            See possible report errors first. Upgrade later if you want guided next steps or attorney-ready support.
-          </p>
-          <a href="/dashboard.html" className="btn-mint text-sm py-3 px-7">
-            Join Free
-            <ArrowRight size={15} />
-          </a>
+      <section className="bg-sky-50 py-16">
+        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-6 lg:flex-row lg:items-center">
+          <div><h2 className="text-3xl font-bold text-navy-950">Take control of your credit story.</h2><p className="mt-2 text-slate-600">Start with a secure review and clear, human-approved next steps.</p></div>
+          <div className="flex flex-wrap gap-3"><Link to="/scan" className="btn-primary rounded-md">Start free scan</Link><Link to="/dashboard" className="btn-outline rounded-md">View portal preview</Link></div>
         </div>
       </section>
     </>
