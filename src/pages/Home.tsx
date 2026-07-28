@@ -33,32 +33,32 @@ function PortalPreview() {
         <b className="ml-2 text-[11px] text-slate-600">CreditVivo portal</b>
         <span className="ml-auto text-[10px] text-slate-400">Secure preview</span>
       </div>
-      <div className="grid min-h-[390px] grid-cols-[130px_1fr] max-sm:grid-cols-1">
-        <aside className="bg-gradient-to-b from-[#082f5b] to-[#061f40] p-4 text-white max-sm:hidden">
+      <div className="grid min-h-[480px] grid-cols-[155px_1fr] max-sm:grid-cols-1">
+        <aside className="bg-gradient-to-b from-[#082f5b] to-[#061f40] p-5 text-white max-sm:hidden">
           <b className="mb-7 block text-sm">CreditVivo</b>
           {['Overview', 'Reports', 'Review points', 'Evidence', 'Responses'].map((item, i) => (
             <span key={item} className={`mb-2 block rounded px-2 py-2 text-[10px] ${i === 0 ? 'bg-emerald-600' : 'text-slate-300'}`}>{item}</span>
           ))}
         </aside>
-        <div className="min-w-0 bg-slate-50 p-5 max-sm:p-4">
+        <div className="min-w-0 bg-slate-50 p-7 max-sm:p-4">
           <div className="mb-4 flex items-start justify-between">
             <div><small className="text-[10px] text-slate-500">Your credit workspace</small><h3 className="text-lg font-bold text-navy-900">Report review</h3></div>
             <span className="text-[10px] text-slate-400">Updated today</span>
           </div>
-          <div className="mb-3 grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+          <div className="mb-5 grid grid-cols-3 gap-3 max-sm:grid-cols-1">
             {bureaus.map(([name, status, color], i) => (
-              <div key={name} className={`flex items-center gap-2 rounded border border-slate-200 bg-white p-2.5 ${i > 0 ? 'max-sm:hidden' : ''}`}>
-                <b className={`grid h-6 w-6 place-items-center rounded-full text-[10px] text-white ${color}`}>{name[0]}</b>
-                <span><strong className="block text-[10px] text-navy-800">{name}</strong><small className="text-[9px] text-slate-500">{status}</small></span>
+              <div key={name} className={`flex min-h-[76px] items-center gap-3 rounded border border-slate-200 bg-white p-4 ${i > 0 ? 'max-sm:hidden' : ''}`}>
+                <b className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs text-white ${color}`}>{name[0]}</b>
+                <span><strong className="block text-xs text-navy-800">{name}</strong><small className="mt-1 block text-[10px] text-slate-500">{status}</small></span>
               </div>
             ))}
           </div>
           <div className="rounded border border-slate-200 bg-white">
-            <div className="flex justify-between border-b border-slate-200 p-3 text-[10px]"><b>Possible review points</b><span className="text-emerald-700">View all</span></div>
+            <div className="flex min-h-[52px] items-center justify-between border-b border-slate-200 p-4 text-xs"><b>Possible review points</b><span className="text-emerald-700">View all</span></div>
             {findings.map(([status, item, records]) => (
-              <div key={item} className="grid grid-cols-[80px_1fr_52px] gap-2 border-b border-slate-100 p-3 text-[9px] last:border-0 max-sm:grid-cols-[72px_1fr]">
+              <div key={item} className="grid min-h-[68px] grid-cols-[100px_minmax(180px,1fr)_70px] items-center gap-4 border-b border-slate-100 p-4 text-[11px] leading-5 last:border-0 max-sm:grid-cols-[82px_minmax(0,1fr)] max-sm:gap-3">
                 <b className={status === 'Reviewed' ? 'text-emerald-700' : 'text-amber-700'}>{status}</b>
-                <span className="truncate text-slate-700">{item}</span>
+                <span className="whitespace-normal break-words text-slate-700">{item}</span>
                 <small className="text-right text-slate-400 max-sm:hidden">{records}</small>
               </div>
             ))}
