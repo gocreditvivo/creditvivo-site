@@ -1,183 +1,63 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import UnderConstructionNotice from './UnderConstructionNotice';
 
-type HeaderLink =
-  | { href: string; label: string; primary: true }
-  | { to: string; label: string; primary?: false };
-
-const headerLinks: HeaderLink[] = [
-  { href: '/dashboard.html', label: 'Get Started', primary: true },
-  { to: '/why', label: 'Why Credit Vivo' },
-  { to: '/pricing', label: 'Pricing' },
-  { to: '/faq', label: 'FAQ' },
-  { to: '/learning', label: 'Learning' },
+const nav = [
+  ['/#how-it-works', 'How it works'],
+  ['/#ai-review', 'AI review'],
+  ['/dashboard', 'Portal'],
+  ['/pricing', 'Plans'],
+  ['/login', 'Client login'],
 ];
 
-function Nav() {
+function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-emerald-100/70 bg-white/95 shadow-sm shadow-navy-900/5 backdrop-blur-sm">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="flex min-h-[72px] flex-col items-start justify-center gap-3 py-3 lg:h-[72px] lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:py-0">
-          <Link to="/" className="flex items-center gap-3">
-            <img src="/logo.webp" alt="Credit Vivo" className="h-9 w-9 sm:h-12 sm:w-12" />
-            <span className="text-xl font-semibold tracking-tight text-navy-900 sm:text-3xl">
-              Credit <span className="text-emerald-700">Vivo</span>
-            </span>
-          </Link>
-
-          <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:w-auto lg:justify-end lg:overflow-visible lg:pb-0" aria-label="Main navigation">
-            {headerLinks.map((link) => (
-              'href' in link ? (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="shrink-0 rounded-lg bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-900/20"
-                >
-                  {link.label}
-                </a>
-              ) : (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={
-                  link.primary
-                    ? 'shrink-0 rounded-lg bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-900/20'
-                    : 'shrink-0 rounded-lg px-3 py-2.5 text-sm font-semibold text-navy-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800'
-                  }
-                >
-                  {link.label}
-                </Link>
-              )
-            ))}
-          </nav>
-        </div>
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-lg">
+      <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-6 px-6 lg:px-10">
+        <Link to="/" className="flex shrink-0 items-center gap-2.5">
+          <img src="/logo.webp" alt="" className="h-10 w-10" />
+          <span className="text-xl font-bold tracking-tight text-navy-950">Credit<span className="text-emerald-700">Vivo</span></span>
+        </Link>
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
+          {nav.map(([to, label]) => <Link key={to} to={to} className="text-sm font-semibold text-slate-600 transition-colors hover:text-emerald-700">{label}</Link>)}
+        </nav>
+        <Link to="/scan" className="shrink-0 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-800">Start free scan</Link>
       </div>
     </header>
   );
 }
 
-function BottomButtons({ exclude }: { exclude?: string }) {
-  const allLinks = [
-    { to: '/join', label: 'Join Free', primary: true },
-    { to: '/why', label: 'Why Credit Vivo' },
-    { to: '/pricing', label: 'Pricing' },
-    { to: '/faq', label: 'FAQ' },
-    { to: '/learning', label: 'Learning' },
-  ];
-
-  const filtered = allLinks.filter((l) => l.to !== exclude);
-
-  return (
-    <section className="py-16 bg-navy-50/50">
-      <div className="max-w-2xl mx-auto px-4 text-center">
-        <h3 className="text-lg font-bold text-navy-900 mb-2">Keep going with Credit Vivo</h3>
-        <p className="text-sm text-navy-500 mb-6">Choose the next page that helps you move forward.</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {filtered.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className={l.primary ? 'btn-primary text-xs' : 'btn-soft text-xs'}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function Footer() {
   return (
-    <footer className="bg-navy-950 text-navy-300 pt-14 pb-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
-          <div className="col-span-2 md:col-span-1">
-            <Link to="/" className="flex items-center gap-2 mb-3">
-              <img src="/logo.webp" alt="Credit Vivo" className="w-6 h-6 brightness-200" />
-              <span className="text-sm font-bold text-white">
-                Credit <span className="text-emerald-300">Vivo</span>
-              </span>
-            </Link>
-            <p className="text-xs text-navy-400 leading-relaxed">
-              You take control. We clear the path.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Product</h4>
-            <div className="space-y-2">
-              <Link to="/join" className="block text-xs text-navy-400 hover:text-white transition-colors">Join Free</Link>
-              <Link to="/pricing" className="block text-xs text-navy-400 hover:text-white transition-colors">Pricing</Link>
-              <Link to="/learning" className="block text-xs text-navy-400 hover:text-white transition-colors">Learning</Link>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Company</h4>
-            <div className="space-y-2">
-              <Link to="/why" className="block text-xs text-navy-400 hover:text-white transition-colors">Why Credit Vivo</Link>
-              <Link to="/faq" className="block text-xs text-navy-400 hover:text-white transition-colors">FAQ</Link>
-              <Link to="/reviews" className="block text-xs text-navy-400 hover:text-white transition-colors">Reviews</Link>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Members</h4>
-            <div className="space-y-2">
-              <a href="/dashboard.html" className="block text-xs text-navy-400 hover:text-white transition-colors">Sign In</a>
-              <Link to="/scan" className="block text-xs text-navy-400 hover:text-white transition-colors">Free Scan</Link>
-              <Link to="/findings" className="block text-xs text-navy-400 hover:text-white transition-colors">Findings</Link>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Legal</h4>
-            <div className="space-y-2">
-              <Link to="/compliance" className="block text-xs text-navy-400 hover:text-white transition-colors">Compliance</Link>
-              <Link to="/status" className="block text-xs text-navy-400 hover:text-white transition-colors">System Status</Link>
-              <Link to="/terms" className="block text-xs text-navy-400 hover:text-white transition-colors">Terms</Link>
-              <Link to="/privacy" className="block text-xs text-navy-400 hover:text-white transition-colors">Privacy</Link>
-              <Link to="/disclosure" className="block text-xs text-navy-400 hover:text-white transition-colors">Disclosure</Link>
-            </div>
-          </div>
+    <footer className="bg-[#06264c] py-12 text-slate-300">
+      <div className="mx-auto grid max-w-7xl gap-9 px-6 md:grid-cols-[.55fr_1.4fr_auto]">
+        <div>
+          <Link to="/" className="text-lg font-bold text-white">Credit<span className="text-emerald-300">Vivo</span></Link>
+          <p className="mt-2 text-xs text-slate-400">Secure. Transparent. Human-first.</p>
         </div>
-
-        <div className="border-t border-navy-800 pt-6">
-          <p className="text-[11px] text-navy-500 leading-relaxed max-w-4xl">
-            Credit Vivo does not guarantee credit score increases, removals, approvals, or specific outcomes. Accurate, current, and verifiable information may remain on a credit report. Credit Vivo is not a law firm and does not provide legal advice. Optional legal support, if offered, is separate.
-          </p>
-          <div className="mt-4 space-y-3 text-[11px] text-navy-500 leading-relaxed max-w-4xl">
-            <p>
-              <strong className="text-navy-300">Federal Consumer Disclosure (CROA):</strong>{' '}
-              You have the right to dispute inaccurate information in your credit report by contacting the credit bureau directly. However, neither you nor any credit repair company or credit repair organization has the right to have accurate, current, and verifiable information removed from your credit report. The credit bureau must remove accurate, negative information from your report only if it is over 7 years old. Bankruptcy information can be reported for 10 years.
-            </p>
-            <p>
-              <strong className="text-navy-300">Platform Classification:</strong>{' '}
-              Credit Vivo is an educational software platform and self-directed tool. Credit Vivo is not a credit repair agency, credit repair organization, or law firm. We do not provide legal advice or perform credit repair services on your behalf. Our software empowers users to organize their own data and generate their own disputes.
-            </p>
-          </div>
-        </div>
+        <p className="text-[11px] leading-5 text-slate-400">
+          CreditVivo does not guarantee score increases, approvals, or deletion of accurate, current,
+          and verifiable information. Consumers may dispute information directly with credit bureaus
+          and furnishers for free. Attorney services, if available, require separate eligibility review
+          and attorney engagement.
+        </p>
+        <nav className="flex flex-wrap gap-4 text-xs">
+          <Link to="/privacy" className="hover:text-white">Privacy</Link>
+          <Link to="/terms" className="hover:text-white">Terms</Link>
+          <Link to="/disclosure" className="hover:text-white">Disclosure</Link>
+          <Link to="/faq" className="hover:text-white">FAQ</Link>
+        </nav>
       </div>
     </footer>
   );
 }
 
 export default function Layout() {
-  const location = useLocation();
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white">
       <UnderConstructionNotice />
-      <Nav />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <BottomButtons exclude={location.pathname} />
+      <Header />
+      <main><Outlet /></main>
       <Footer />
     </div>
   );
 }
-
-export { BottomButtons };
