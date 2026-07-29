@@ -1,3 +1,8 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",
@@ -29,6 +34,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  outputFileTracingRoot: projectRoot,
   async headers() {
     return [
       {
@@ -46,3 +52,4 @@ const nextConfig = {
 };
 
 export default nextConfig;
+
