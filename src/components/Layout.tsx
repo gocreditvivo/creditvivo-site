@@ -1,5 +1,4 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import UnderConstructionNotice from './UnderConstructionNotice';
 
 type HeaderLink =
   | { href: string; label: string; primary: true }
@@ -144,21 +143,6 @@ function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-navy-800 pt-6">
-          <p className="text-[11px] text-navy-500 leading-relaxed max-w-4xl">
-            Credit Vivo does not guarantee credit score increases, removals, approvals, or specific outcomes. Accurate, current, and verifiable information may remain on a credit report. Credit Vivo is not a law firm and does not provide legal advice. Optional legal support, if offered, is separate.
-          </p>
-          <div className="mt-4 space-y-3 text-[11px] text-navy-500 leading-relaxed max-w-4xl">
-            <p>
-              <strong className="text-navy-300">Federal Consumer Disclosure (CROA):</strong>{' '}
-              You have the right to dispute inaccurate information in your credit report by contacting the credit bureau directly. However, neither you nor any credit repair company or credit repair organization has the right to have accurate, current, and verifiable information removed from your credit report. The credit bureau must remove accurate, negative information from your report only if it is over 7 years old. Bankruptcy information can be reported for 10 years.
-            </p>
-            <p>
-              <strong className="text-navy-300">Platform Classification:</strong>{' '}
-              Credit Vivo is an educational software platform and self-directed tool. Credit Vivo is not a credit repair agency, credit repair organization, or law firm. We do not provide legal advice or perform credit repair services on your behalf. Our software empowers users to organize their own data and generate their own disputes.
-            </p>
-          </div>
-        </div>
       </div>
     </footer>
   );
@@ -169,7 +153,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <UnderConstructionNotice />
       <Nav />
       <main className="flex-1">
         <Outlet />
