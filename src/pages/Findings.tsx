@@ -214,7 +214,7 @@ export default function Findings() {
             ) : (
               <div
                 key={download.label}
-                className="rounded-lg bg-navy-50/50 p-4 border border-navy-100/50"
+                className="min-h-[132px] rounded-xl border border-navy-100/60 bg-navy-50/50 p-5 sm:p-6"
               >
                 <span className="inline-flex items-center gap-2 text-sm font-semibold text-navy-500">
                   <Download size={14} className="text-navy-300" />
@@ -247,10 +247,10 @@ export default function Findings() {
               return (
                 <div
                   key={cat}
-                  className="flex items-center justify-between py-3 px-4 bg-navy-50/50 rounded-lg"
+                  className="grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-navy-100/60 bg-navy-50/50 px-5 py-4"
                 >
-                  <span className="text-sm font-medium text-navy-700">{cat}</span>
-                  <span className="text-[11px] text-navy-400">
+                  <span className="min-w-0 whitespace-normal break-words text-sm font-semibold leading-relaxed text-navy-700">{cat}</span>
+                  <span className="whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-[11px] font-medium text-navy-500 shadow-sm">
                     {count > 0 ? `${count} item${count === 1 ? '' : 's'}` : 'Clear'}
                   </span>
                 </div>
@@ -307,11 +307,11 @@ export default function Findings() {
               >
                 <div className="flex items-start gap-2">
                   <AlertCircle size={15} className="text-sky-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-navy-800">
+                  <div className="min-w-0">
+                    <p className="whitespace-normal break-words text-sm font-semibold leading-relaxed text-navy-800">
                       {issue.customer_label}
                     </p>
-                    <p className="text-xs text-navy-500 mt-1 leading-relaxed">
+                    <p className="mt-2 whitespace-normal break-words text-xs leading-relaxed text-navy-500">
                       {issue.customer_explanation}
                     </p>
                     <p className="text-[11px] text-navy-400 mt-2">
