@@ -1,111 +1,305 @@
+import Link from "next/link";
 import BrandLogo from "../components/BrandLogo";
 
-const navLinks = [
-  ["Free Scan", "/scan"],
-  ["Dashboard", "/dashboard"],
-  ["Findings", "/findings"],
-  ["Chat", "/chat"],
-  ["Monthly", "/monthly"],
-  ["Pricing", "/pricing"],
-  ["Login", "/login"],
-];
-
 const steps = [
-  ["Upload", "Add a credit report or start with a guided launch-preview upload."],
-  ["Understand", "See simple findings in plain English, without backend scanner noise."],
-  ["Act", "Move through Prep, Round 1, response tracking, and the next best step."],
-  ["Grow", "Track monthly updates, documents, messages, and credit-building guidance."],
+  ["Get your reports", "Securely import your Experian, Equifax, and TransUnion reports."],
+  ["Start a secure review", "Review your reports in one private, guided workspace."],
+  ["Understand possible review points", "See plain-English findings that may deserve a closer look."],
+  ["Organize supporting records", "Keep statements, letters, and notes connected to the right item."],
+  ["Approve each next step", "You stay in control before any dispute support moves forward."],
+  ["Track responses and updates", "Follow bureau and furnisher replies without juggling spreadsheets."],
 ];
 
-const signals = [
-  ["Simple portal", "Ready", "Customers always know what is happening next."],
-  ["Compliance chat", "Ready", "Safe answers for uploads, findings, disputes, and next steps."],
-  ["Friendly updates", "Preview", "Portal updates are ready. Email and text delivery connect after vendor setup."],
-  ["Staged rounds", "Ready", "We do not rush every possible issue at once."],
+const plans = [
+  {
+    name: "Free Scan",
+    copy: "Start with a secure review of your reports.",
+    features: ["Import 3-bureau reports", "Plain-English summary", "Possible review points", "Portal access"],
+    action: "Get started",
+    href: "/scan",
+  },
+  {
+    name: "AI Guided",
+    copy: "Go deeper with evidence and response tools.",
+    features: ["Everything in Free Scan", "Unlimited review points", "Evidence organizer", "Response tracking"],
+    action: "Explore guided review",
+    href: "/pricing",
+    featured: true,
+  },
+  {
+    name: "Plus Managed",
+    copy: "Get expert guidance while you stay in control.",
+    features: ["Everything in AI Guided", "Expert case review", "Strategy recommendations", "Ongoing tracking"],
+    action: "See plan details",
+    href: "/pricing",
+  },
+  {
+    name: "Legal Review",
+    copy: "A separate attorney path for eligible matters.",
+    features: ["Eligibility screening", "Independent attorney review", "Separate engagement", "Clear next steps"],
+    action: "Learn more",
+    href: "/pricing",
+  },
 ];
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function PortalPreview({ compact = false }) {
+  return (
+    <div className={`cv-home-portal ${compact ? "is-compact" : ""}`}>
+      <div className="cv-window-bar">
+        <span />
+        <span />
+        <span />
+        <strong>CreditVivo portal</strong>
+        <small>Secure preview</small>
+      </div>
+      <div className="cv-portal-preview-body">
+        <aside className="cv-preview-sidebar">
+          <BrandLogo />
+          {["Overview", "Reports", "Review points", "Evidence", "Responses"].map((item, index) => (
+            <span className={index === 0 ? "active" : ""} key={item}>{item}</span>
+          ))}
+        </aside>
+        <div className="cv-preview-content">
+          <div className="cv-preview-heading">
+            <div>
+              <small>Your credit workspace</small>
+              <h3>Report review</h3>
+            </div>
+            <span>Updated today</span>
+          </div>
+          <div className="cv-bureau-row">
+            {[
+              ["Experian", "Reviewed"],
+              ["Equifax", "In review"],
+              ["TransUnion", "In review"],
+            ].map(([name, status], index) => (
+              <div key={name}>
+                <b className={`cv-bureau-mark mark-${index}`}>{name[0]}</b>
+                <span><strong>{name}</strong><small>{status}</small></span>
+              </div>
+            ))}
+          </div>
+          <div className="cv-review-table">
+            <div className="cv-table-title">
+              <strong>Possible review points</strong>
+              <span>View all</span>
+            </div>
+            {[
+              ["Needs review", "Late payment reported 03/2023", "2 records"],
+              ["Needs review", "Account balance may be incomplete", "1 record"],
+              ["Reviewed", "Collection account â€” payment recorded", "3 records"],
+            ].map(([status, item, evidence]) => (
+              <div className="cv-table-row" key={item}>
+                <span className={status === "Reviewed" ? "reviewed" : ""}>{status}</span>
+                <strong>{item}</strong>
+                <small>{evidence}</small>
+              </div>
+            ))}
+          </div>
+          <div className="cv-progress-line">
+            {["Reports received", "AI review complete", "Review points identified", "Your approval", "Responses"].map((item, index) => (
+              <div className={index < 3 ? "done" : ""} key={item}>
+                <i>{index < 3 ? "âœ“" : index + 1}</i>
+                <small>{item}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
-    <main className="cv-page">
-      <nav className="cv-nav" style={{ display: "flex", justifyContent: "space-between", padding: "18px 7%", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10 }}>
+    <main className="cv-home">
+      <header className="cv-home-nav">
         <BrandLogo />
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-          {navLinks.map(([label, href]) => (
-            <a key={href} href={href}>{label}</a>
+        <nav aria-label="Main navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#ai-review">AI review</a>
+          <a href="#portal">Portal</a>
+          <a href="#plans">Plans</a>
+          <Link href="/login">Client login</Link>
+        </nav>
+        <Link href="/scan" className="cv-home-button small">Start free scan</Link>
+      </header>
+
+      <section className="cv-home-hero">
+        <div className="cv-hero-copy">
+          <h1>Credit improvement you can see, prove, and track.</h1>
+          <p>
+            CreditVivo helps you review your credit reports, spot possible inaccuracies,
+            organize evidence, prepare dispute support, and track every bureau and furnisher
+            response in one secure portal.
+          </p>
+          <div className="cv-home-actions">
+            <Link href="/scan" className="cv-home-button">Start free scan <ArrowIcon /></Link>
+            <Link href="/dashboard" className="cv-home-button secondary">View portal preview</Link>
+          </div>
+          <p className="cv-hero-note">No hard pull. You approve every next step.</p>
+        </div>
+        <PortalPreview compact />
+      </section>
+
+      <section className="cv-trust-rail" aria-label="CreditVivo commitments">
+        {[
+          ["shield", "No hard pull", "Reviewing your reports does not impact your score."],
+          ["document", "Evidence-based review", "Findings connect to report details and records you provide."],
+          ["lock", "Secure document vault", "Keep sensitive records organized in one private workspace."],
+          ["scales", "Attorney review if eligible", "Legal services require separate eligibility and engagement."],
+        ].map(([icon, title, copy]) => (
+          <div key={title}>
+            <span className={`cv-line-icon ${icon}`} aria-hidden="true" />
+            <p><strong>{title}</strong><small>{copy}</small></p>
+          </div>
+        ))}
+      </section>
+
+      <section className="cv-home-section cv-steps" id="how-it-works">
+        <div className="cv-section-intro">
+          <h2>A clear path from report to response</h2>
+          <p>One guided process keeps the details organized and you in control.</p>
+        </div>
+        <ol>
+          {steps.map(([title, copy], index) => (
+            <li key={title}>
+              <span>{index + 1}</span>
+              <strong>{title}</strong>
+              <p>{copy}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="cv-ai-band" id="ai-review">
+        <div className="cv-ai-intro">
+          <h2>Powerful review behind the scenes. Plain English in front.</h2>
+          <p>
+            CreditVivo helps surface possible review points, then shows why each item
+            deserves attention. The engine stays behind the scenesâ€”no raw parser logs,
+            no confusing technical output, and no automatic dispute sending.
+          </p>
+          <Link href="/faq">How the review works <ArrowIcon /></Link>
+        </div>
+        <div className="cv-ai-principles">
+          {[
+            ["01", "Report analysis", "Cross-checks account details, dates, balances, and public-record data."],
+            ["02", "Plain-English findings", "Explains each possible review point and why it was flagged."],
+            ["03", "Source evidence", "Keeps the relevant report lines and your supporting records together."],
+            ["04", "Human approval", "You review and approve each step. Nothing is sent automatically."],
+          ].map(([number, title, copy]) => (
+            <article key={title}>
+              <span>{number}</span>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
           ))}
         </div>
-      </nav>
+      </section>
 
-      <section
-        style={{
-          minHeight: 620,
-          display: "grid",
-          alignItems: "center",
-          padding: "64px 7% 58px",
-          backgroundImage: "linear-gradient(90deg, rgba(255,253,245,.97) 0%, rgba(255,253,245,.9) 35%, rgba(255,253,245,.18) 70%), url('/brand/credit-vivo-hero.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center right",
-          borderBottom: "1px solid #cfeee0",
-        }}
-      >
-        <div style={{ maxWidth: 650 }}>
-          <p style={{ display: "inline-block", background: "#dcfce7", color: "#047857", padding: "8px 12px", borderRadius: 999, fontWeight: 900 }}>
-            Launch preview ready
+      <section className="cv-home-section cv-portal-section" id="portal">
+        <div className="cv-section-intro">
+          <h2>Everything connected to the right next step.</h2>
+          <p>
+            Review a finding, see its source, organize evidence, and follow every response
+            in one calm workspace.
           </p>
-          <h1 style={{ fontSize: 58, lineHeight: 1.02, margin: "18px 0", maxWidth: 620, letterSpacing: 0 }}>
-            Credit Vivo
-          </h1>
-          <p style={{ fontSize: 19, color: "#334155", maxWidth: 610, lineHeight: 1.65 }}>
-            A friendly credit report portal that helps customers upload reports, understand possible issues, follow dispute rounds, and see monthly progress. Unconnected features are clearly marked before launch.
-          </p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
-            <a href="/scan" className="cv-primary-link">Start Free Credit Scan</a>
-            <a href="/dashboard" className="cv-secondary-link">View Customer Portal</a>
-            <a href="/chat" className="cv-secondary-link">Ask Compliance Chat</a>
+        </div>
+        <div className="cv-portal-detail">
+          <article>
+            <div className="cv-finding-title">
+              <span>Needs review</span>
+              <small>Possible review point</small>
+            </div>
+            <h3>Late payment reported 03/2023</h3>
+            <dl>
+              <div><dt>Account</dt><dd>ABC Bank Card ending 1234</dd></div>
+              <div><dt>Source</dt><dd>Equifax</dd></div>
+              <div><dt>Why flagged</dt><dd>Your records may show an on-time payment for the same period.</dd></div>
+            </dl>
+            <h4>Supporting records</h4>
+            {["Bank statement â€” Feb 2023", "Payment confirmation â€” Mar 5, 2023", "Dispute letter draft"].map((item, index) => (
+              <p className="cv-evidence-row" key={item}>
+                <span>{item}</span>
+                <b className={index === 2 ? "draft" : ""}>{index === 2 ? "Draft" : "Uploaded"}</b>
+              </p>
+            ))}
+            <Link href="/findings" className="cv-home-button small">View evidence</Link>
+          </article>
+          <div className="cv-tracker">
+            <div className="cv-tracker-heading">
+              <div><small>Bureau &amp; furnisher</small><h3>Response tracker</h3></div>
+              <span>Live in your portal</span>
+            </div>
+            {[
+              ["Experian", 2, "In review"],
+              ["Equifax", 3, "Replied"],
+              ["TransUnion", 1, "Received"],
+            ].map(([name, progress, status]) => (
+              <div className="cv-tracker-row" key={name}>
+                <strong>{name}</strong>
+                <div>
+                  {[0, 1, 2, 3].map((item) => <i className={item <= progress ? "active" : ""} key={item} />)}
+                </div>
+                <span>{status}</span>
+              </div>
+            ))}
+            <p>Responses stay attached to the matching account and review point.</p>
           </div>
         </div>
       </section>
 
-      <section style={{ padding: "34px 7% 72px", display: "grid", gap: 24 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
-          {signals.map(([title, status, copy]) => (
-            <div key={title} className="cv-card" style={{ padding: 22 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>{title}</h2>
-                <span className={`cv-status-chip ${status === "Ready" ? "ready" : "soon"}`}>{status}</span>
-              </div>
-              <p style={{ margin: 0, color: "#557184", lineHeight: 1.55 }}>{copy}</p>
-            </div>
+      <section className="cv-plans-band" id="plans">
+        <div className="cv-section-intro">
+          <h2>Choose the level of support you need.</h2>
+          <p>Start free. See plan details before you commit to paid support.</p>
+        </div>
+        <div className="cv-plans-grid">
+          {plans.map((plan) => (
+            <article className={plan.featured ? "featured" : ""} key={plan.name}>
+              <h3>{plan.name}</h3>
+              <p>{plan.copy}</p>
+              <ul>
+                {plan.features.map((feature) => <li key={feature}><CheckIcon />{feature}</li>)}
+              </ul>
+              <Link href={plan.href} className={`cv-home-button small ${plan.featured ? "" : "secondary"}`}>{plan.action}</Link>
+            </article>
           ))}
         </div>
+        <p className="cv-plan-note">
+          Attorney services require separate eligibility review and attorney engagement.
+          Not all matters will qualify.
+        </p>
+      </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(280px,.72fr)", gap: 20, alignItems: "start" }}>
-          <section className="cv-card" style={{ padding: 26 }}>
-            <p style={{ color: "#0f766e", fontWeight: 900, marginTop: 0 }}>How Credit Vivo works</p>
-            <div style={{ display: "grid", gap: 14 }}>
-              {steps.map(([title, copy], index) => (
-                <div key={title} style={{ display: "grid", gridTemplateColumns: "44px minmax(0,1fr)", gap: 14, alignItems: "start", borderTop: index ? "1px solid #dff4e9" : 0, paddingTop: index ? 14 : 0 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 999, display: "grid", placeItems: "center", background: index === 0 ? "#dcfce7" : index === 1 ? "#e0f2fe" : index === 2 ? "#fef3c7" : "#ffe4e6", color: "#0f4f4a", fontWeight: 950 }}>
-                    {index + 1}
-                  </span>
-                  <div>
-                    <h3 style={{ margin: "0 0 5px" }}>{title}</h3>
-                    <p style={{ margin: 0, color: "#557184", lineHeight: 1.55 }}>{copy}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <aside className="cv-card" style={{ padding: 26, background: "linear-gradient(180deg, #ecfdf5, #ffffff)" }}>
-            <h2 style={{ marginTop: 0 }}>Built for the marathon</h2>
-            <p style={{ color: "#557184", lineHeight: 1.65 }}>
-              Credit improvement is a process. Customers need clear steps, regular updates, and honest guidance more than a confusing scanner screen.
-            </p>
-            <a href="/monthly" className="cv-primary-link">See Monthly Update</a>
-          </aside>
+      <section className="cv-final-cta">
+        <div>
+          <h2>Take control of your credit story.</h2>
+          <p>Start with a secure review and clear, human-approved next steps.</p>
+        </div>
+        <div className="cv-home-actions">
+          <Link href="/scan" className="cv-home-button">Start free scan</Link>
+          <Link href="/dashboard" className="cv-home-button secondary">View portal preview</Link>
         </div>
       </section>
     </main>
   );
 }
+
