@@ -26,6 +26,7 @@ import FounderHealth from './pages/FounderHealth';
 import GrowthAI from './pages/GrowthAI';
 import OwnerAICommand from './pages/OwnerAICommand';
 import Status from './pages/Status';
+import Member from './pages/Member';
 
 export default function App() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/apartment-denial" element={<ApartmentDenial />} />
           <Route path="/collection-not-mine" element={<CollectionNotMine />} />
           <Route path="/status" element={<Status />} />
+          <Route path="/member" element={<Member />} />
         </Route>
 
         {/* Member pages */}
