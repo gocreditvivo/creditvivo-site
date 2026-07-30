@@ -5,18 +5,15 @@ const complianceLinks = [
   ["Terms", "/terms"],
   ["Disclosure", "/disclosure"],
   ["FAQ", "/faq"],
-  ["Chat", "/chat"],
+  ["Client login", "/login"],
 ];
 
 export default function ComplianceFooter() {
   return (
     <footer className="cv-compliance-footer">
-      <div>
-        <strong>Credit Vivo</strong>
-        <p>
-          Results vary. Credit Vivo does not guarantee removals, approvals, or credit score increases.
-          You may dispute inaccurate credit report information directly with the credit bureaus at no cost.
-        </p>
+      <div className="cv-footer-brand">
+        <strong>CreditVivo</strong>
+        <span>Secure. Transparent. Human-first.</span>
       </div>
       <nav aria-label="Compliance links">
         {complianceLinks.map(([label, href]) => (
@@ -26,3 +23,4 @@ export default function ComplianceFooter() {
     </footer>
   );
 }
+

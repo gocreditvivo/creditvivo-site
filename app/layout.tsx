@@ -4,10 +4,10 @@ import './globals.css'
 
 export const metadata = {
   title: {
-    default: 'Credit Vivo',
-    template: '%s | Credit Vivo',
+    default: 'CreditVivo | Credit improvement you can track',
+    template: '%s | CreditVivo',
   },
-  description: 'Credit Vivo helps consumers upload credit reports, review possible errors, track disputes, and follow next steps in a secure portal experience.',
+  description: 'Review possible credit-report inaccuracies, organize evidence, prepare dispute support, and track responses in one secure portal.',
 }
 
 export default function RootLayout({
@@ -25,3 +25,4 @@ export default function RootLayout({
     </html>
   )
 }
+
