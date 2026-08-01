@@ -143,6 +143,25 @@ function Footer() {
           </div>
         </div>
 
+        <div className="border-t border-navy-800/60 pt-6">
+          <p className="text-[11px] leading-relaxed text-navy-400 max-w-4xl">
+            Credit Vivo is educational software for self-directed consumers. Credit Vivo is
+            not a credit repair organization, credit services organization, credit bureau,
+            law firm, or government agency, and does not perform credit repair services on
+            your behalf or provide legal advice or representation. Credit Vivo does not send
+            disputes, letters, or complaints automatically — you review and approve your own
+            next steps. Credit Vivo does not guarantee score increases, removals, approvals,
+            or outcomes; accurate, current, and verifiable information may legally remain on
+            a credit report. You have the right to dispute inaccurate or incomplete
+            information directly with credit bureaus and furnishers at no cost, without using
+            Credit Vivo or any other company. Read the full{' '}
+            <Link to="/disclosure" className="underline hover:text-white">Consumer Disclosure</Link>
+            {' '}before using Credit Vivo.
+          </p>
+          <p className="mt-4 text-[11px] text-navy-500">
+            © {new Date().getFullYear()} Credit Vivo. All rights reserved.
+          </p>
+        </div>
       </div>
     </footer>
   );
