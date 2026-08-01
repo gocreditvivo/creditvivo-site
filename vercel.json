@@ -5,6 +5,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/sky-bell",
+      "destination": "/api/sky-bell"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
     },
