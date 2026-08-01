@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Credit Vivo | AI Credit Check-In with Clear Next Steps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ===== DESIGN TOKENS ===== */
+:root{
+  /* Navy */
+  --navy-950:#050816;--navy-900:#0a0e27;--navy-850:#0f1535;--navy-800:#151c40;--navy-700:#1e2856;--navy-600:#2a3470;
+  /* Brighter emerald */
+  --emerald-600:#059669;--emerald-500:#10b981;--emerald-400:#34d399;--emerald-300:#6ee7b7;--emerald-50:#ecfdf5;
+  /* Vibrant accents */
+  --purple-600:#7c3aed;--purple-500:#8b5cf6;--purple-400:#a78bfa;--purple-300:#c4b5fd;--purple-50:#f5f3ff;
+  --pink-500:#ec4899;--pink-400:#f472b6;--pink-50:#fdf2f8;
+  --amber-400:#fbbf24;--amber-300:#fcd34d;--amber-50:#fffbeb;
+  --rose-500:#f43f5e;--rose-400:#fb7185;
+  --cyan-400:#22d3ee;--cyan-300:#67e8f9;
+  --teal-400:#2dd4bf;--teal-300:#5eead4;
+  /* Light surfaces */
+  --white:#ffffff;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-300:#cbd5e1;--gray-400:#94a3b8;--gray-500:#64748b;--gray-600:#475569;--gray-700:#334155;--gray-800:#1e293b;--gray-900:#0f172a;
+  /* Gradients */
+  --grad-vivo:linear-gradient(135deg,#10b981 0%,#2dd4bf 100%);
+  --grad-vivo-bright:linear-gradient(135deg,#34d399 0%,#6ee7b7 100%);
+  --grad-purple:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);
+  --grad-hero:linear-gradient(165deg,#050816 0%,#0a0e27 35%,#064e3b 75%,#050816 100%);
+  --grad-score:linear-gradient(135deg,#10b981 0%,#22d3ee 50%,#8b5cf6 100%);
+  --grad-mesh:radial-gradient(ellipse 80% 60% at 15% 5%,rgba(139,92,246,.18),transparent 60%),radial-gradient(ellipse 70% 50% at 85% 40%,rgba(16,185,129,.15),transparent 60%),radial-gradient(ellipse 60% 40% at 50% 100%,rgba(236,72,153,.1),transparent 60%);
+  --grad-light-mesh:radial-gradient(ellipse 70% 50% at 10% 0%,rgba(139,92,246,.06),transparent 60%),radial-gradient(ellipse 60% 50% at 90% 30%,rgba(16,185,129,.06),transparent 60%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(236,72,153,.04),transparent 60%);
+  --glass:rgba(255,255,255,.06);
+  --glass-border:rgba(255,255,255,.1);
+  --glass-bright:rgba(255,255,255,.1);
+  --glass-light:rgba(255,255,255,.7);
+  --glass-light-border:rgba(15,23,42,.08);
+}
+
+/* ===== KEYFRAMES ===== */
+@keyframes floatSoft{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.15)}50%{box-shadow:0 0 50px 16px rgba(16,185,129,.12)}}
+@keyframes pulsePurple{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.12)}50%{box-shadow:0 0 50px 16px rgba(139,92,246,.1)}}
+@keyframes shineSweep{0%{transform:translateX(-150%) skewX(-20deg)}100%{transform:translateX(250%) skewX(-20deg)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes pulseRing{0%{transform:scale(.85);opacity:.8}100%{transform:scale(2);opacity:0}}
+@keyframes floatCard{0%,100%{transform:translateY(0) rotate(0)}33%{transform:translateY(-10px) rotate(.8deg)}66%{transform:translateY(8px) rotate(-.8deg)}}
+
+/* ===== SCROLL REVEAL ===== */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-scale{opacity:0;transform:scale(.92);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
+.reveal-scale.visible{opacity:1;transform:scale(1)}
+.reveal-fade{opacity:0;transition:opacity 1s ease}
+.reveal-fade.visible{opacity:1}
+.reveal-left{opacity:0;transform:translateX(-40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
+
+/* ===== UTILITY ===== */
+.hover-lift{transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s ease,border-color .3s ease}
+.hover-lift:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.12)}
+.shine{position:relative;overflow:hidden}
+.shine::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transform:translateX(-150%) skewX(-20deg);pointer-events:none}
+.shine:hover::after{animation:shineSweep .8s ease forwards}
+.text-gradient{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.text-gradient-purple{background:var(--grad-purple);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.text-gradient-score{background:var(--grad-score);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.text-shimmer{background:linear-gradient(90deg,#10b981,#22d3ee,#8b5cf6,#10b981);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s linear infinite}
+
+/* ===== LAYOUT ===== */
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+.text-center{text-align:center}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:14px;font-size:15px;font-weight:700;border:none;cursor:pointer;text-decoration:none;transition:all .25s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden;font-family:inherit}
+.btn-primary{background:var(--grad-vivo);color:#fff;box-shadow:0 4px 20px rgba(16,185,129,.35)}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(16,185,129,.45)}
+.btn-purple{background:var(--grad-purple);color:#fff;box-shadow:0 4px 20px rgba(139,92,246,.35)}
+.btn-purple:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(139,92,246,.45)}
+.btn-navy{background:var(--navy-900);color:#fff}
+.btn-navy:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(10,14,39,.3)}
+.btn-white{background:#fff;color:var(--navy-900);box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.btn-white:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.btn-ghost-light{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.2)}
+.btn-ghost-light:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.4)}
+.btn-ghost-dark{background:transparent;color:var(--navy-800);border:1.5px solid rgba(15,23,42,.15)}
+.btn-ghost-dark:hover{background:rgba(15,23,42,.04);border-color:rgba(15,23,42,.3)}
+
+/* ===== NAV ===== */
+.nav{position:sticky;top:0;z-index:100;background:rgba(5,8,22,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);transition:background .3s}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px;max-width:1200px;margin:0 auto;padding:0 24px}
+.nav-logo{font-weight:800;font-size:22px;color:#fff;display:flex;align-items:center;gap:2px;letter-spacing:-.02em}
+.nav-logo .accent{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-logo .pulse{width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 0 16px #10b981;animation:blink 2s infinite;margin-left:6px}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:14px;font-weight:600;color:#94a3b8;transition:color .15s}
+.nav-links a:hover{color:#10b981}
+.nav-links .nav-cta{font-weight:700;color:#fff;padding:10px 22px;border-radius:12px;background:var(--grad-vivo);box-shadow:0 2px 12px rgba(16,185,129,.3);transition:all .2s}
+.nav-links .nav-cta:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(16,185,129,.4);color:#fff}
+@media(max-width:768px){.nav-links a:not(.nav-cta){display:none}}
+@media(max-width:480px){.hero h1{font-size:38px}.section-title,.prompts h2,.final-cta h2,.score-shift h2{font-size:28px}.big-stat-num{font-size:48px}.hero-stats{gap:24px}.hero-stat .num{font-size:24px}}
+
+/* ===== HERO ===== */
+.hero{background:var(--grad-hero);position:relative;overflow:hidden;padding:80px 0 100px}
+.hero::before{content:'';position:absolute;inset:0;background:var(--grad-mesh);pointer-events:none}
+/* hero ::after removed — no light fade between dark sections */
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center;position:relative;z-index:1}
+@media(max-width:968px){.hero-grid{grid-template-columns:1fr;gap:48px}}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;color:#34d399;margin-bottom:24px;animation:slideRight .6s ease}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:#f43f5e;animation:blink 2s infinite;box-shadow:0 0 8px #f43f5e}
+.hero h1{font-size:56px;font-weight:800;line-height:1.05;color:#fff;margin-bottom:24px;letter-spacing:-.03em;animation:slideUp .8s ease}
+.hero h1 .gradient{background:var(--grad-score);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradientShift 4s ease infinite}
+.hero h1 .underline-wave{position:relative;display:inline-block}
+.hero h1 .underline-wave::after{content:'';position:absolute;bottom:4px;left:0;right:0;height:4px;background:var(--grad-vivo);border-radius:4px;opacity:.8}
+.hero-sub{font-size:18px;color:#cbd5e1;line-height:1.7;max-width:540px;margin-bottom:28px;animation:slideUp .8s ease .15s both}
+.hero-sub strong{color:#34d399}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;animation:slideUp .8s ease .3s both}
+.hero-stats{display:flex;gap:40px;margin-top:40px;animation:fadeIn 1s ease .5s both}
+.hero-stat .num{font-size:32px;font-weight:800;color:#34d399;line-height:1}
+.hero-stat .label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.hero-disclaimer{font-size:12px;color:#475569;margin-top:20px;animation:fadeIn 1s ease .7s both;max-width:540px;line-height:1.6}
+
+/* ===== ANIMATED DASHBOARD ===== */
+.dashboard-wrap{position:relative;display:flex;justify-content:center;animation:scaleIn 1s ease .3s both}
+.dashboard{position:relative;width:100%;max-width:420px}
+.dash-glow{position:absolute;inset:-40px;background:radial-gradient(ellipse,rgba(16,185,129,.2),rgba(139,92,246,.12),transparent 70%);filter:blur(50px);border-radius:50px;pointer-events:none}
+.dash-card{position:relative;background:rgba(255,255,255,.04);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);animation:pulseGlow 5s infinite}
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.dash-scanning{display:flex;align-items:center;gap:8px}
+.dash-scanning .dot{width:8px;height:8px;border-radius:50%;background:#f43f5e;animation:blink 1.5s infinite;box-shadow:0 0 10px #f43f5e}
+.dash-scanning span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#34d399}
+.dash-live{font-size:10px;color:#64748b;display:flex;align-items:center;gap:5px}
+.dash-live::before{content:'';width:6px;height:6px;border-radius:50%;background:#10b981;animation:blink 1.5s infinite}
+
+/* Score Ring */
+.score-ring-wrap{display:flex;align-items:center;gap:20px;margin-bottom:24px}
+.score-ring{position:relative;width:110px;height:110px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring circle{fill:none;stroke-width:7}
+.score-ring .bg{stroke:rgba(255,255,255,.06)}
+.score-ring .fg{stroke:url(#scoreGradient);stroke-linecap:round;transition:stroke-dashoffset 1.8s cubic-bezier(.16,1,.3,1);filter:drop-shadow(0 0 6px rgba(16,185,129,.4))}
+.score-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-size:30px;font-weight:800;color:#34d399;line-height:1}
+.score-label{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.score-info{flex:1}
+.score-delta{display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.12);color:#34d399;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;margin-bottom:8px}
+.score-info p{font-size:12px;color:#94a3b8;margin:0}
+
+/* Milestones */
+.milestones{display:flex;justify-content:space-between;margin-top:14px;padding:0 2px;position:relative}
+.milestones::before{content:'';position:absolute;top:5px;left:12%;right:12%;height:2px;background:rgba(255,255,255,.06)}
+.milestone{text-align:center;position:relative;z-index:1}
+.milestone-dot{width:12px;height:12px;border-radius:50%;margin:0 auto 6px;background:var(--navy-850);border:2px solid rgba(255,255,255,.1)}
+.milestone.passed .milestone-dot{background:#10b981;border-color:#10b981;opacity:.4}
+.milestone.active .milestone-dot{background:#10b981;border-color:#10b981;box-shadow:0 0 16px rgba(16,185,129,.5)}
+.milestone-label{font-size:10px;font-weight:700;color:#64748b}
+.milestone.active .milestone-label{color:#34d399}
+.milestone.future .milestone-label{color:#475569}
+
+/* Progress bars */
+.progress-track{position:relative;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.05);height:8px}
+.progress-fill{height:100%;border-radius:999px;background:var(--grad-vivo);transition:width 1.2s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden}
+.progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shineSweep 2.5s infinite}
+.progress-fill.purple{background:var(--grad-purple)}
+.progress-fill.cyan{background:linear-gradient(90deg,#22d3ee,#8b5cf6)}
+
+/* Issue items */
+.issue-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.issue-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:all .2s;animation:slideRight .5s ease both}
+.issue-item:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);transform:translateX(2px)}
+.issue-item:nth-child(1){animation-delay:.1s}
+.issue-item:nth-child(2){animation-delay:.2s}
+.issue-item:nth-child(3){animation-delay:.3s}
+.issue-left{display:flex;align-items:center;gap:10px}
+.issue-dot{width:8px;height:8px;border-radius:50%;animation:blink 2s infinite}
+.issue-text{font-size:12px;font-weight:500;color:#cbd5e1}
+.issue-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:100px}
+
+/* Action prompt inside dashboard */
+.dash-prompt{display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.15);transition:all .2s}
+.dash-prompt:hover{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.25)}
+
+/* Floating badges — positioned outside card edges */
+.float-badge{position:absolute;z-index:3;animation:floatSoft 5s infinite}
+.float-1{right:-50px;top:-25px}
+.float-2{left:-55px;bottom:90px;animation-delay:-2s}
+.float-3{right:-25px;bottom:-20px;animation-delay:-1s}
+@media(max-width:1100px){.float-badge{display:none}}
+.float-card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.float-card-content{display:flex;align-items:center;gap:10px}
+.float-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.float-title{font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em}
+.float-sub{font-size:11px;font-weight:700;color:#34d399}
+.float-bell{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,.25);animation:pulsePurple 3.5s infinite;position:relative}
+.float-bell .notif{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#f43f5e;animation:blink 1.5s infinite;border:2px solid #050816}
+
+/* ===== SCORE SHIFT BANNER ===== */
+.score-shift{background:var(--gray-50);padding:60px 0;position:relative}
+.score-shift-inner{text-align:center}
+.score-shift-badge{display:inline-flex;align-items:center;gap:8px;background:var(--purple-50);border:1px solid var(--purple-300);padding:8px 20px;border-radius:100px;font-size:13px;font-weight:700;color:var(--purple-600);margin-bottom:20px}
+.score-shift h2{font-size:36px;font-weight:800;color:var(--navy-900);margin-bottom:16px;letter-spacing:-.02em}
+.score-shift h2 .gradient{background:var(--grad-purple);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.score-shift p{font-size:16px;color:var(--gray-500);max-width:600px;margin:0 auto 40px}
+.score-shift-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:900px;margin:0 auto}
+@media(max-width:768px){.score-shift-stats{grid-template-columns:repeat(2,1fr)}}
+.shift-stat{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:24px 16px;text-align:center;transition:transform .25s,box-shadow .25s}
+.shift-stat:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(0,0,0,.06)}
+.shift-icon{font-size:28px;margin-bottom:10px}
+.shift-label-big{font-size:18px;font-weight:800;color:var(--navy-900);line-height:1;margin-bottom:4px}
+.shift-label{font-size:12px;font-weight:600;color:var(--gray-500);margin-top:4px}
+
+/* ===== BIG STATS BAR (dark) ===== */
+.big-stats{background:var(--grad-hero);padding:80px 0;position:relative;overflow:hidden}
+.big-stats::before{content:'';position:absolute;inset:0;background:var(--grad-mesh)}
+.big-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;text-align:center;position:relative;z-index:1}
+@media(max-width:768px){.big-stats-grid{grid-template-columns:1fr;gap:40px}}
+.big-stat-num{font-size:72px;font-weight:800;line-height:1;margin-bottom:10px;letter-spacing:-.03em}
+.big-stat-num.green{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.big-stat-num.purple{background:var(--grad-purple);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.big-stat-num.cyan{background:linear-gradient(135deg,#22d3ee,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.big-stat-label{font-size:16px;font-weight:700;color:#e2e8f0}
+.big-stat-sub{font-size:13px;color:#64748b;margin-top:4px}
+
+/* ===== WHAT WE DO (light) ===== */
+.what-we-do{background:var(--gray-50);padding:100px 0;position:relative;overflow:hidden}
+.what-we-do::before{content:'';position:absolute;inset:0;background:var(--grad-light-mesh)}
+.what-we-do .section-eyebrow{color:var(--emerald-600)}
+.what-we-do .section-title{color:var(--navy-900)}
+.what-we-do .section-title .gradient{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.what-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:56px;position:relative;z-index:1}
+@media(max-width:768px){.what-grid{grid-template-columns:repeat(2,1fr)}}
+.what-card{text-align:left;background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:28px;transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s,border-color .3s;position:relative;overflow:hidden}
+.what-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.08);border-color:var(--emerald-300)}
+.what-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--grad-vivo);opacity:0;transition:opacity .3s}
+.what-card:hover::before{opacity:1}
+.what-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:24px}
+.what-card h3{font-size:17px;font-weight:700;color:var(--navy-900);margin-bottom:8px}
+.what-card p{font-size:14px;color:var(--gray-500);line-height:1.7}
+
+/* ===== INTERACTIVE PROMPTS (dark) ===== */
+.prompts{background:var(--navy-950);padding:100px 0;position:relative;overflow:hidden}
+.prompts::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(139,92,246,.12),transparent 60%)}
+.prompts-eyebrow{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#a78bfa;margin-bottom:12px;text-align:center}
+.prompts h2{font-size:40px;font-weight:800;color:#fff;text-align:center;margin-bottom:16px;line-height:1.15;letter-spacing:-.02em}
+.prompts h2 .gradient{background:var(--grad-purple);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.prompts-sub{text-align:center;font-size:16px;color:#94a3b8;max-width:560px;margin:0 auto 56px}
+.prompts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative;z-index:1}
+@media(max-width:768px){.prompts-grid{grid-template-columns:1fr}}
+.prompt-card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;transition:transform .3s,box-shadow .3s,border-color .3s}
+.prompt-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.3);border-color:rgba(139,92,246,.3)}
+.prompt-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.prompt-emoji{font-size:32px}
+.prompt-card h3{font-size:16px;font-weight:700;color:#fff}
+.prompt-card .prompt-sub{font-size:12px;color:#64748b}
+.prompt-flow{display:flex;flex-direction:column;gap:8px}
+.prompt-step{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.03);font-size:13px;color:#cbd5e1;border:1px solid rgba(255,255,255,.04)}
+.prompt-step .icon{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
+.prompt-arrow{text-align:center;font-size:18px;color:#475569;padding:2px 0}
+.prompt-result{display:flex;align-items:center;gap:10px;padding:14px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);font-size:13px;font-weight:700;color:#34d399}
+.prompt-result.purple{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.2);color:#a78bfa}
+.prompt-disclaimer{font-size:11px;color:#475569;text-align:center;margin-top:36px;max-width:600px;margin-left:auto;margin-right:auto}
+
+/* ===== HOW IT WORKS (light) ===== */
+.how-it-works{background:#fff;padding:100px 0}
+.section-eyebrow{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--emerald-600);text-align:center;margin-bottom:10px}
+.section-title{font-size:40px;font-weight:800;color:var(--navy-900);text-align:center;line-height:1.15;letter-spacing:-.02em}
+.how-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:56px}
+@media(max-width:768px){.how-grid{grid-template-columns:1fr}}
+.how-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:20px;padding:32px;transition:transform .3s,box-shadow .3s;position:relative;overflow:hidden}
+.how-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.06)}
+.how-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.how-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.how-card-num{font-size:32px;font-weight:800;color:var(--gray-200)}
+.how-card h3{font-size:17px;font-weight:700;color:var(--navy-900);margin-bottom:8px}
+.how-card p{font-size:14px;color:var(--gray-500);line-height:1.7}
+.how-disclaimer{text-align:center;margin-top:40px;font-size:12px;color:var(--gray-400);max-width:600px;margin-left:auto;margin-right:auto}
+
+/* ===== WHAT WE HELP WITH (dark) ===== */
+.help-section{background:var(--navy-950);padding:100px 0;position:relative;overflow:hidden}
+.help-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(16,185,129,.08),transparent 60%)}
+.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative;z-index:1}
+@media(max-width:768px){.help-grid{grid-template-columns:1fr}}
+.help-card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:32px;transition:transform .3s,box-shadow .3s;position:relative;overflow:hidden}
+.help-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.3)}
+.help-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;opacity:0;transition:opacity .3s}
+.help-card:hover::before{opacity:1}
+.help-card.green::before{background:var(--grad-vivo)}
+.help-card.purple::before{background:var(--grad-purple)}
+.help-card.cyan::before{background:linear-gradient(90deg,#22d3ee,#8b5cf6)}
+.help-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;font-size:28px}
+.help-card h3{font-size:20px;font-weight:700;color:#fff;margin-bottom:12px}
+.help-card p{font-size:14px;color:#94a3b8;line-height:1.7}
+
+/* ===== REAL LIFE GOALS (light) ===== */
+.goals{background:var(--gray-50);padding:100px 0;position:relative;overflow:hidden}
+.goals::before{content:'';position:absolute;inset:0;background:var(--grad-light-mesh)}
+.goals-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:20px;margin-top:56px;position:relative;z-index:1}
+@media(max-width:768px){.goals-grid{grid-template-columns:repeat(2,1fr)}}
+.goal-card{text-align:center;background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:32px 20px;transition:transform .3s,box-shadow .3s,border-color .3s}
+.goal-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.06);border-color:var(--emerald-300)}
+.goal-emoji{font-size:40px;margin-bottom:16px}
+.goal-card h3{font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:4px}
+.goal-card p{font-size:13px;color:var(--gray-400)}
+.goals-disclaimer{text-align:center;margin-top:28px;font-size:12px;color:var(--gray-400)}
+
+/* ===== PRICING PREVIEW (dark) ===== */
+.pricing-preview{background:var(--navy-950);padding:100px 0;position:relative;overflow:hidden}
+.pricing-preview::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(139,92,246,.1),transparent 60%)}
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:56px;position:relative;z-index:1}
+@media(max-width:768px){.pricing-grid{grid-template-columns:repeat(2,1fr)}}
+.price-card{text-align:center;background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:32px 20px;transition:transform .3s,box-shadow .3s}
+.price-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.3)}
+.price-card.featured{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.05);box-shadow:0 0 0 1px rgba(16,185,129,.2),0 12px 40px rgba(16,185,129,.08)}
+.price-card h3{font-size:16px;font-weight:700;color:#fff}
+.price-amount{font-size:36px;font-weight:800;color:#34d399;margin:16px 0}
+.price-amount small{font-size:14px;font-weight:600;color:#64748b}
+.price-card p{font-size:13px;color:#94a3b8}
+.pricing-disclaimer{font-size:11px;color:#475569;text-align:center;margin-top:28px;max-width:600px;margin-left:auto;margin-right:auto}
+
+/* ===== LEARNING CENTER (light) ===== */
+.learning{background:#fff;padding:100px 0}
+.learning-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px}
+@media(max-width:768px){.learning-grid{grid-template-columns:1fr}}
+.learn-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:20px;padding:28px;transition:transform .3s,box-shadow .3s}
+.learn-card:hover{transform:translateY(-8px);box-shadow:0 24px 56px rgba(0,0,0,.06)}
+.learn-cat{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--purple-600)}
+.learn-card h3{font-size:16px;font-weight:700;color:var(--navy-900);margin:8px 0}
+.learn-card p{font-size:14px;color:var(--gray-500);line-height:1.7}
+
+/* ===== FINAL CTA (dark gradient) ===== */
+.final-cta{background:var(--grad-hero);padding:100px 0;text-align:center;position:relative;overflow:hidden}
+.final-cta::before{content:'';position:absolute;inset:0;background:var(--grad-mesh)}
+.final-cta-content{position:relative;z-index:1}
+.final-cta-eyebrow{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#34d399;margin-bottom:14px}
+.final-cta h2{font-size:44px;font-weight:800;color:#fff;margin-bottom:20px;line-height:1.15;letter-spacing:-.02em}
+.final-cta h2 .gradient{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.final-cta p{font-size:17px;color:#cbd5e1;margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto}
+.final-cta-disclaimer{font-size:12px;color:#475569;margin-top:24px;max-width:560px;margin-left:auto;margin-right:auto}
+
+/* ===== FOOTER ===== */
+.footer{background:var(--navy-950);padding:48px 0 36px;border-top:1px solid rgba(255,255,255,.05)}
+.footer-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;margin-bottom:36px}
+@media(max-width:768px){.footer-top{grid-template-columns:1fr 1fr}}
+.footer-brand{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.footer-brand .accent{background:var(--grad-vivo);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.footer-tagline{font-size:13px;color:#64748b;margin-top:4px}
+.footer-col h4{font-size:12px;font-weight:700;color:#fff;margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em}
+.footer-col a{display:block;font-size:13px;color:#64748b;margin-bottom:8px;transition:color .15s}
+.footer-col a:hover{color:#34d399}
+.footer-legal{border-top:1px solid rgba(255,255,255,.05);padding-top:24px}
+.footer-legal p{font-size:11px;color:#475569;line-height:1.8}
+.footer-bottom{margin-top:16px;font-size:11px;color:#334155}
+
+/* ===== TRUST STRIP ===== */
+.trust-strip{background:var(--navy-900);border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05);padding:32px 0}
+.trust-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+@media(max-width:768px){.trust-grid{grid-template-columns:repeat(2,1fr)}}
+.trust-item{text-align:center;font-size:14px;font-weight:600;color:#64748b;padding:8px}
+.trust-item span{display:block;font-size:20px;margin-bottom:4px}
+
+</style>
+</head>
+<body>
+
+<!-- ===== NAV ===== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">Credit<span class="accent">Vivo</span><span class="pulse"></span></a>
+    <div class="nav-links">
+      <a href="#how">How It Works</a>
+      <a href="#help">What We Fix</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#learning">Learning</a>
+      <a href="#cta" class="nav-cta">🚀 Start Free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-badge"><span class="dot"></span> No hard pull to start</div>
+        <h1>Denied Credit?<br><span class="gradient">Let's Fix That.</span> 🎯</h1>
+        <p class="hero-sub">Credit Vivo uses AI to scan your report, find what's holding you back, and prepare everything for dispute — with attorney guidance when you need it. <strong>Free to start.</strong> No BS.</p>
+        <div class="hero-cta">
+          <a href="#cta" class="btn btn-primary shine">🚀 Start Free Check-In</a>
+          <a href="#how" class="btn btn-ghost-light">See How It Works</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="num" id="heroStat1">0</div><div class="label">Issue types found</div></div>
+          <div class="hero-stat"><div class="num" id="heroStat2">0</div><div class="label">Bureau coverage</div></div>
+          <div class="hero-stat"><div class="num" id="heroStat3">0</div><div class="label">Cost to start</div></div>
+        </div>
+        <p class="hero-disclaimer">Not a law firm. No guaranteed score increases. Results vary. You can dispute errors yourself for free.</p>
+      </div>
+
+      <!-- ===== ANIMATED DASHBOARD ===== -->
+      <div class="dashboard-wrap">
+        <div class="dashboard">
+          <div class="dash-glow"></div>
+          <div class="dash-card">
+            <div class="dash-header">
+              <div class="dash-scanning"><span class="dot"></span><span>AI Scanning...</span></div>
+              <span class="dash-live">Live preview</span>
+            </div>
+
+            <!-- Score Ring + Info -->
+            <div class="score-ring-wrap">
+              <div class="score-ring">
+                <svg width="110" height="110" viewBox="0 0 110 110">
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#10b981"/>
+                      <stop offset="50%" stop-color="#22d3ee"/>
+                      <stop offset="100%" stop-color="#8b5cf6"/>
+                    </linearGradient>
+                  </defs>
+                  <circle class="bg" cx="55" cy="55" r="48"/>
+                  <circle class="fg" cx="55" cy="55" r="48" stroke-dasharray="301.6" stroke-dashoffset="301.6" id="scoreRing"/>
+                </svg>
+                <div class="score-ring-center">
+                  <div class="score-num" id="scoreNum">0</div>
+                  <div class="score-label">Readiness</div>
+                </div>
+              </div>
+              <div class="score-info">
+                <div class="score-delta">↑ +8 pts this month</div>
+                <p>Your score is moving. Here's what we found:</p>
+                <div class="milestones">
+                  <div class="milestone passed"><div class="milestone-dot"></div><div class="milestone-label">600</div></div>
+                  <div class="milestone active"><div class="milestone-dot"></div><div class="milestone-label">672</div></div>
+                  <div class="milestone future"><div class="milestone-dot"></div><div class="milestone-label">700</div></div>
+                  <div class="milestone future"><div class="milestone-dot"></div><div class="milestone-label">760</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div style="margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Report Scan</span>
+                <span style="font-size:11px;font-weight:700;color:#34d399">87%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:87%"></div></div>
+            </div>
+
+            <!-- Issues -->
+            <div class="issue-list">
+              <div class="issue-item">
+                <div class="issue-left"><span class="issue-dot" style="background:#fbbf24;box-shadow:0 0 8px #fbbf24"></span><span class="issue-text">Late payment — flagged</span></div>
+                <span class="issue-badge" style="background:rgba(251,191,36,.15);color:#fbbf24">Review</span>
+              </div>
+              <div class="issue-item">
+                <div class="issue-left"><span class="issue-dot" style="background:#f43f5e;box-shadow:0 0 8px #f43f5e"></span><span class="issue-text">Duplicate collection found</span></div>
+                <span class="issue-badge" style="background:rgba(244,63,94,.15);color:#fb7185">Prep</span>
+              </div>
+              <div class="issue-item">
+                <div class="issue-left"><span class="issue-dot" style="background:#10b981;box-shadow:0 0 8px #10b981"></span><span class="issue-text">Address mismatch — filed</span></div>
+                <span class="issue-badge" style="background:rgba(16,185,129,.15);color:#34d399">Done</span>
+              </div>
+            </div>
+
+            <!-- Action prompt -->
+            <div class="dash-prompt">
+              <span style="font-size:16px">💡</span>
+              <span style="font-size:12px;color:#a78bfa;font-weight:600">Next step: Pay down Chase card to lower utilization</span>
+            </div>
+          </div>
+
+<!-- Floating badges removed — dashboard is clean and self-contained -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TRUST STRIP ===== -->
+<section class="trust-strip">
+  <div class="container">
+    <div class="trust-grid">
+      <div class="trust-item reveal reveal-fade"><span>🆓</span>Free Check-In</div>
+      <div class="trust-item reveal reveal-fade"><span>📖</span>Plain English</div>
+      <div class="trust-item reveal reveal-fade"><span>🔍</span>Review Options</div>
+      <div class="trust-item reveal reveal-fade"><span>⚖️</span>Attorney Guidance</div>
+      <div class="trust-item reveal reveal-fade"><span>📊</span>Progress Tracking</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SCORE SHIFT BANNER (light) ===== -->
+<section class="score-shift">
+  <div class="container">
+    <div class="score-shift-inner">
+      <div class="score-shift-badge reveal reveal-fade">✨ Score Shift</div>
+      <h2 class="reveal reveal-fade">When your credit moves, <span class="gradient">everything changes.</span></h2>
+      <p class="reveal reveal-fade">Better credit can mean better rates, more approvals, and real money saved. Here's what that looks like:</p>
+      <div class="score-shift-stats">
+        <div class="shift-stat reveal reveal-scale hover-lift"><div class="shift-icon">📉</div><div class="shift-label-big">Better Rates</div><div class="shift-label">Lower interest on loans & cards</div></div>
+        <div class="shift-stat reveal reveal-scale hover-lift"><div class="shift-icon">🏠</div><div class="shift-label-big">More Options</div><div class="shift-label">Mortgage & rental applications</div></div>
+        <div class="shift-stat reveal reveal-scale hover-lift"><div class="shift-icon">🚗</div><div class="shift-label-big">Auto Financing</div><div class="shift-label">Prepare for auto loan applications</div></div>
+        <div class="shift-stat reveal reveal-scale hover-lift"><div class="shift-icon">💳</div><div class="shift-label-big">Stronger Profile</div><div class="shift-label">Better credit card offers</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BIG STATS BAR (dark) ===== -->
+<section class="big-stats">
+  <div class="container">
+    <div class="big-stats-grid">
+      <div class="reveal reveal-scale">
+        <div class="big-stat-num green" id="bigStat1">0</div>
+        <div class="big-stat-label">Issue types detected</div>
+        <div class="big-stat-sub">Late payments, collections, duplicates & more</div>
+      </div>
+      <div class="reveal reveal-scale">
+        <div class="big-stat-num purple" id="bigStat2">0</div>
+        <div class="big-stat-label">Bureau coverage</div>
+        <div class="big-stat-sub">TransUnion, Equifax, and Experian</div>
+      </div>
+      <div class="reveal reveal-scale">
+        <div class="big-stat-num cyan" id="bigStat3">0</div>
+        <div class="big-stat-label">Steps to action</div>
+        <div class="big-stat-sub">From free scan to clear next steps</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHAT WE DO (light) ===== -->
+<section class="what-we-do">
+  <div class="container">
+    <div class="reveal reveal-fade">
+      <p class="section-eyebrow">💡 Simple credit help</p>
+      <h2 class="section-title">Know what's wrong.<br><span class="gradient">Know what to do next.</span> 🎯</h2>
+    </div>
+    <div class="what-grid">
+      <div class="what-card reveal hover-lift"><div class="what-icon" style="background:var(--emerald-50)">🔍</div><h3>Check</h3><p>Look for possible report problems without a hard pull.</p></div>
+      <div class="what-card reveal hover-lift"><div class="what-icon" style="background:var(--purple-50)">📖</div><h3>Explain</h3><p>Show the issues in plain English, not credit bureau jargon.</p></div>
+      <div class="what-card reveal hover-lift"><div class="what-icon" style="background:var(--amber-50)">📝</div><h3>Prepare</h3><p>Organize documents and draft next steps before anything is sent.</p></div>
+      <div class="what-card reveal hover-lift"><div class="what-icon" style="background:var(--pink-50)">📊</div><h3>Track</h3><p>Follow what happened, what's waiting, and what comes next.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INTERACTIVE ACTION PROMPTS (dark) ===== -->
+<section class="prompts">
+  <div class="container">
+    <div class="reveal reveal-fade">
+      <p class="prompts-eyebrow">⚡ AI Action Prompts</p>
+      <h2>Credit Vivo doesn't just scan.<br><span class="gradient">It tells you what to do next.</span></h2>
+      <p class="prompts-sub">Real examples of how Credit Vivo turns report findings into clear, actionable next steps.</p>
+    </div>
+    <div class="prompts-grid">
+      <div class="prompt-card reveal hover-lift">
+        <div class="prompt-header">
+          <span class="prompt-emoji">💳</span>
+          <div><h3>High Utilization</h3><p class="prompt-sub">Chase Sapphire card</p></div>
+        </div>
+        <div class="prompt-flow">
+          <div class="prompt-step"><span class="icon">🔍</span> Utilization at 78% — hurting your score</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-step"><span class="icon">💡</span> Pay $40 to bring it under 30%</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-result">✅ Readiness may improve</div>
+        </div>
+      </div>
+      <div class="prompt-card reveal hover-lift">
+        <div class="prompt-header">
+          <span class="prompt-emoji">📋</span>
+          <div><h3>Duplicate Collection</h3><p class="prompt-sub">Found on 2 bureaus</p></div>
+        </div>
+        <div class="prompt-flow">
+          <div class="prompt-step"><span class="icon">🔍</span> Same debt listed twice — possible error</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-step"><span class="icon">📝</span> Prep dispute letter with evidence</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-result purple">⚖️ Attorney-ready if needed</div>
+        </div>
+      </div>
+      <div class="prompt-card reveal hover-lift">
+        <div class="prompt-header">
+          <span class="prompt-emoji">🏠</span>
+          <div><h3>Mortgage Readiness</h3><p class="prompt-sub">3 items to address</p></div>
+        </div>
+        <div class="prompt-flow">
+          <div class="prompt-step"><span class="icon">🔍</span> Score at 672 — need 680+ for best rates</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-step"><span class="icon">📝</span> Address 3 items: late payment, utilization, inquiry</div>
+          <div class="prompt-arrow">↓</div>
+          <div class="prompt-result">🎯 Path to readiness mapped</div>
+        </div>
+      </div>
+    </div>
+    <p class="prompt-disclaimer reveal reveal-fade">Credit Vivo does not guarantee score increases or specific outcomes. Results vary by consumer. These are educational suggestions, not financial advice.</p>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS (light) ===== -->
+<section class="how-it-works" id="how">
+  <div class="container">
+    <div class="reveal reveal-fade">
+      <p class="section-eyebrow">🚀 How it works</p>
+      <h2 class="section-title">From free scan to clear next steps.</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-card reveal hover-lift shine"><div class="how-card-header"><div class="how-card-icon" style="background:var(--emerald-50)">📥</div><span class="how-card-num">01</span></div><h3>Start your free Check-In</h3><p>Upload or connect a report. No hard pull. No cost.</p></div>
+      <div class="how-card reveal hover-lift shine"><div class="how-card-header"><div class="how-card-icon" style="background:var(--purple-50)">🔍</div><span class="how-card-num">02</span></div><h3>See possible problems</h3><p>AI flags items that may need a closer look — in plain English.</p></div>
+      <div class="how-card reveal hover-lift shine"><div class="how-card-header"><div class="how-card-icon" style="background:var(--amber-50)">📝</div><span class="how-card-num">03</span></div><h3>Review your options</h3><p>What can be disputed, what needs proof, and what should wait.</p></div>
+      <div class="how-card reveal hover-lift shine"><div class="how-card-header"><div class="how-card-icon" style="background:var(--pink-50)">⚖️</div><span class="how-card-num">04</span></div><h3>Get help if it's serious</h3><p>Hard cases get prepped for attorney review via LegalShield.</p></div>
+    </div>
+    <p class="how-disclaimer reveal reveal-fade">You have the right to dispute credit report errors yourself for free. Credit Vivo helps organize and prepare — you approve everything before it's sent.</p>
+  </div>
+</section>
+
+<!-- ===== WHAT WE HELP WITH (dark) ===== -->
+<section class="help-section" id="help">
+  <div class="container">
+    <div class="reveal reveal-fade" style="text-align:center">
+      <p class="section-eyebrow" style="color:#34d399">🛠️ What we fix</p>
+      <h2 class="section-title" style="color:#fff">Smart review with <span class="text-gradient">human help.</span></h2>
+    </div>
+    <div class="help-grid">
+      <div class="help-card green reveal hover-lift"><div class="help-icon" style="background:rgba(16,185,129,.12)">🧠</div><h3>AI Report Analysis</h3><p>Late payments, collections, charge-offs, duplicate reporting, missing dates, bureau mismatches — we scan for all of it.</p></div>
+      <div class="help-card purple reveal hover-lift"><div class="help-icon" style="background:rgba(139,92,246,.12)">✨</div><h3>Dispute Workflow</h3><p>Draft letters, evidence packets, tracking details — all prepared before anything is sent. You review and approve.</p></div>
+      <div class="help-card cyan reveal hover-lift"><div class="help-icon" style="background:rgba(34,211,238,.12)">⚖️</div><h3>Attorney Guidance</h3><p>When the issue is serious, we prep your file for attorney review through LegalShield — $50/mo add-on.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REAL LIFE GOALS (light) ===== -->
+<section class="goals">
+  <div class="container">
+    <div class="reveal reveal-fade">
+      <p class="section-eyebrow">🎯 Real-life goals</p>
+      <h2 class="section-title">Better credit opens more doors. 🚪</h2>
+    </div>
+    <div class="goals-grid">
+      <div class="goal-card reveal reveal-scale hover-lift"><div class="goal-emoji">🚗</div><h3>Auto Loans</h3><p>Prepare for financing</p></div>
+      <div class="goal-card reveal reveal-scale hover-lift"><div class="goal-emoji">🏠</div><h3>Mortgage</h3><p>Work toward homebuying</p></div>
+      <div class="goal-card reveal reveal-scale hover-lift"><div class="goal-emoji">🔑</div><h3>Rental</h3><p>Strengthen applications</p></div>
+      <div class="goal-card reveal reveal-scale hover-lift"><div class="goal-emoji">🛡️</div><h3>Insurance</h3><p>Understand your options</p></div>
+      <div class="goal-card reveal reveal-scale hover-lift"><div class="goal-emoji">💼</div><h3>Employment</h3><p>Prepare for credit checks</p></div>
+    </div>
+    <p class="goals-disclaimer reveal reveal-fade">Credit Vivo does not guarantee loan, housing, insurance, or job approval.</p>
+  </div>
+</section>
+
+<!-- ===== PRICING PREVIEW (dark) ===== -->
+<section class="pricing-preview" id="pricing">
+  <div class="container">
+    <div class="reveal reveal-fade" style="text-align:center">
+      <p class="section-eyebrow" style="color:#34d399">💰 Pricing</p>
+      <h2 class="section-title" style="color:#fff">Start free. <span class="text-gradient-purple">Add support when ready.</span></h2>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card reveal hover-lift"><h3>🆓 Free</h3><div class="price-amount">$0<small>/mo</small></div><p>AI issue preview</p></div>
+      <div class="price-card featured reveal hover-lift"><h3>🤖 AI Guided</h3><div class="price-amount">$69<small>/mo</small></div><p>Guided support + tracking</p></div>
+      <div class="price-card reveal hover-lift"><h3>⚡ Vivo Plus</h3><div class="price-amount">$95<small>/mo</small></div><p>Full dispute workflow</p></div>
+      <div class="price-card reveal hover-lift"><h3>⚖️ Attorney Prep</h3><div class="price-amount">$95<small>/mo</small></div><p>+$50 LegalShield access</p></div>
+    </div>
+    <p class="pricing-disclaimer reveal reveal-fade">Credit service companies cannot promise a result or credit score increase. Results vary by consumer. Credit Vivo is not a law firm.</p>
+  </div>
+</section>
+
+<!-- ===== LEARNING CENTER (light) ===== -->
+<section class="learning" id="learning">
+  <div class="container">
+    <div class="reveal reveal-fade">
+      <p class="section-eyebrow">📚 Learning Center</p>
+      <h2 class="section-title">Credit basics, <span class="text-gradient">made simple.</span></h2>
+    </div>
+    <div class="learning-grid">
+      <div class="learn-card reveal hover-lift"><span class="learn-cat">🌱 Beginner</span><h3>What affects your score?</h3><p>Payment history, balances, credit age, new applications, and account mix all matter.</p></div>
+      <div class="learn-card reveal hover-lift"><span class="learn-cat">📋 Report Review</span><h3>What is a collection?</h3><p>A collection means a debt may have been sent or sold to a collector. Here's what to know.</p></div>
+      <div class="learn-card reveal hover-lift"><span class="learn-cat">🎯 Goals</span><h3>Before buying a home</h3><p>Start early, keep payments on time, lower balances, and avoid new debt before applying.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINAL CTA (dark gradient) ===== -->
+<section class="final-cta" id="cta">
+  <div class="container">
+    <div class="final-cta-content reveal reveal-scale">
+      <p class="final-cta-eyebrow">🚀 Ready to start?</p>
+      <h2>Start with the <span class="gradient">AI Credit Check-In.</span></h2>
+      <p>See possible report errors first. Upgrade later if you want guided next steps or attorney-ready support.</p>
+      <a href="#cta" class="btn btn-primary shine">🚀 Join Free</a>
+      <p class="final-cta-disclaimer">Credit Vivo is not a law firm. We do not promise specific results or credit score increases. You can dispute errors yourself for free.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">Credit<span class="accent">Vivo</span></div>
+        <p class="footer-tagline">AI-powered credit improvement ⚡</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#how">How It Works</a>
+        <a href="#help">What We Fix</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#learning">Learning</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Compliance</a>
+        <a href="#">Reviews</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Terms</a>
+        <a href="#">Privacy</a>
+        <a href="#">Disclosures</a>
+        <a href="#">CROA Notice</a>
+      </div>
+    </div>
+    <div class="footer-legal">
+      <p>Credit Vivo is a credit improvement platform and is not a law firm. We do not provide legal advice or legal representation. Credit repair services are subject to federal law, including required disclosures, written contracts, and other consumer protections under the Credit Repair Organizations Act (CROA) and related laws. You have the right to dispute credit report errors yourself for free. Credit Vivo does not guarantee score increases, removals, or specific outcomes. Results vary by consumer. LegalShield attorney access ($50/mo) is a separate service with its own membership terms.</p>
+    </div>
+    <p class="footer-bottom">© 2026 Credit Vivo. All rights reserved. Built for people who've been told "no." 💪</p>
+  </div>
+</footer>
+
+<script>
+// ===== SCROLL REVEAL =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+// ===== ANIMATED COUNTERS =====
+function animateCounter(el, target, duration, prefix, suffix) {
+  prefix = prefix || '';
+  suffix = suffix || '';
+  const start = performance.now();
+  function update(now) {
+    const elapsed = (now - start) / 1000;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const value = Math.round(target * eased);
+    // Preserve any child elements (like <span>%</span> or <span>+</span>)
+    const spans = el.querySelectorAll('span');
+    el.textContent = prefix + value.toLocaleString() + suffix;
+    spans.forEach(s => el.appendChild(s));
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const id = el.id;
+      // Hero stats
+      if (id === 'heroStat1') animateCounter(el, 12, 1.5, '', '+');
+      if (id === 'heroStat2') animateCounter(el, 3, 1.6, '', '');
+      if (id === 'heroStat3') animateCounter(el, 0, 1, '$', '');
+      // Big stats
+      if (id === 'bigStat1') animateCounter(el, 12, 1.8, '', '+');
+      if (id === 'bigStat2') animateCounter(el, 3, 1.8, '', '');
+      if (id === 'bigStat3') animateCounter(el, 4, 1.5, '', '');
+      // Dashboard score
+      if (id === 'scoreNum') animateCounter(el, 672, 2);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.4 });
+
+document.querySelectorAll('#heroStat1, #heroStat2, #heroStat3, #bigStat1, #bigStat2, #bigStat3, #scoreNum').forEach((el) => counterObserver.observe(el));
+
+// ===== SCORE RING ANIMATION =====
+const ringObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const ring = document.getElementById('scoreRing');
+      if (ring) {
+        const circumference = 2 * Math.PI * 48;
+        const percent = 0.67; // 67% filled
+        const offset = circumference * (1 - percent);
+        setTimeout(() => {
+          ring.style.strokeDashoffset = offset;
+        }, 300);
+      }
+      ringObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+const dashCard = document.querySelector('.dash-card');
+if (dashCard) ringObserver.observe(dashCard);
+
+// ===== PROGRESS BAR ANIMATION =====
+const progressObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const bar = entry.target;
+      const width = bar.style.width;
+      bar.style.width = '0%';
+      setTimeout(() => { bar.style.width = width; }, 200);
+      progressObserver.unobserve(bar);
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.progress-fill').forEach((el) => progressObserver.observe(el));
+</script>
+
+</body>
+</html>

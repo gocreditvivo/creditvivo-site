@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import DashboardLayout from './components/DashboardLayout';
 import Home from './pages/Home';
+import HomeAnimated from './pages/landing/HomeAnimated';
 import WhyCreditVivo from './pages/WhyCreditVivo';
 import Pricing from './pages/Pricing';
 import FAQ from './pages/FAQ';
@@ -27,6 +28,20 @@ import GrowthAI from './pages/GrowthAI';
 import OwnerAICommand from './pages/OwnerAICommand';
 import Status from './pages/Status';
 import Member from './pages/Member';
+import { getAssignedVariant, type VariantId } from './config/landingPages';
+import type { ComponentType } from 'react';
+
+const homeVariants: Record<VariantId, ComponentType> = {
+  classic: Home,
+  animated: HomeAnimated,
+  dovly: HomeAnimated,
+};
+
+function HomeRouter() {
+  const variant = getAssignedVariant();
+  const Component = homeVariants[variant] ?? HomeAnimated;
+  return <Component />;
+}
 
 export default function App() {
   return (
@@ -34,7 +49,11 @@ export default function App() {
       <Routes>
         {/* Public pages */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<HomeRouter />} />
+          {/* Direct variant access via URL */}
+          <Route path="/lp/classic" element={<Home />} />
+          <Route path="/lp/animated" element={<HomeAnimated />} />
+          <Route path="/lp/dovly" element={<HomeAnimated />} />
           <Route path="/why" element={<WhyCreditVivo />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/faq" element={<FAQ />} />
