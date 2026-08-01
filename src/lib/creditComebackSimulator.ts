@@ -126,7 +126,7 @@ function nextActionFor(item: ScannerReviewItem, level: ScoreImpactLevel): Credit
   return 'Review account';
 }
 
-function reasonFor(item: ScannerReviewItem, signals: string[]) {
+function reasonFor(_item: ScannerReviewItem, signals: string[]) {
   if (signals.includes('Collection reporting')) return 'This collection may be holding your score back.';
   if (signals.includes('Charge-off reporting')) return 'This charge-off may be a major credit blocker.';
   if (signals.includes('Late payment history')) return 'Late payments can strongly affect payment history.';
