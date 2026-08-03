@@ -126,7 +126,7 @@ function nextActionFor(item: ScannerReviewItem, level: ScoreImpactLevel): Credit
   return 'Review account';
 }
 
-function reasonFor(item: ScannerReviewItem, signals: string[]) {
+function reasonFor(signals: string[]) {
   if (signals.includes('Collection reporting')) return 'This collection may be holding your score back.';
   if (signals.includes('Charge-off reporting')) return 'This charge-off may be a major credit blocker.';
   if (signals.includes('Late payment history')) return 'Late payments can strongly affect payment history.';
@@ -151,7 +151,7 @@ export function buildCreditBlockers(result: ScannerParseResult | null): CreditBl
         accountType: item.account_type || item.portfolio_type || 'Account review',
         status: item.status || item.pay_status || 'Needs review',
         balance: item.balance || item.past_due || 'Review',
-        reason: reasonFor(item, signals),
+        reason: reasonFor(signals),
         impactLevel: impact.level,
         possibleRange: impact.range,
         nextAction: nextActionFor(item, impact.level),
@@ -204,7 +204,7 @@ export function buildSimulatorScenarios(blockers: CreditBlocker[]): SimulatorSce
   ];
 }
 
-export function getScoreProfile(_result: ScannerParseResult | null): ScoreProfile {
+export function getScoreProfile(): ScoreProfile {
   // Phase 1: demo/customer-entered score profile.
   // Phase 2: replace this with score extraction from uploaded reports or a monitoring provider.
   return DEFAULT_SCORE_PROFILE;

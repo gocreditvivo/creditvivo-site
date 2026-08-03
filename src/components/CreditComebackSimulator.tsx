@@ -42,7 +42,7 @@ function ImpactBadge({ level }: { level: CreditBlocker['impactLevel'] }) {
 }
 
 export default function CreditComebackSimulator({ result, compact = false }: Props) {
-  const profile = getScoreProfile(result);
+  const profile = getScoreProfile();
   const progress = getScoreProgress(profile);
   const blockers = buildCreditBlockers(result);
   const scenarios = buildSimulatorScenarios(blockers);
