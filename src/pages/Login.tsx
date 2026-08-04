@@ -34,7 +34,10 @@ export default function Login() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { first_name: firstName } },
+          options: {
+            data: { first_name: firstName },
+            emailRedirectTo: `${window.location.origin}/login`,
+          },
         });
         if (error) throw error;
         if (data.user && data.session) {
