@@ -2,10 +2,28 @@ import type { ScannerParseResult } from './scannerApi';
 import { supabase } from './supabaseClient';
 
 const LAST_SCAN_KEY = 'creditVivoLastScanResult';
+const LAST_SCAN_OWNER_KEY = 'creditVivoLastScanOwner';
+let activeUserId: string | null = null;
+
+export function setScanStorageUser(userId: string | null) {
+  activeUserId = userId;
+  try {
+    const storedOwner = localStorage.getItem(LAST_SCAN_OWNER_KEY);
+    if (!userId || storedOwner !== userId) {
+      localStorage.removeItem(LAST_SCAN_KEY);
+    }
+    if (userId) localStorage.setItem(LAST_SCAN_OWNER_KEY, userId);
+    else localStorage.removeItem(LAST_SCAN_OWNER_KEY);
+  } catch {
+    // Storage can be unavailable in strict private browsing modes.
+  }
+}
 
 export function saveLastScanResult(result: ScannerParseResult) {
   try {
+    if (!activeUserId) return;
     localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
+    localStorage.setItem(LAST_SCAN_OWNER_KEY, activeUserId);
   } catch {
     // Storage can be unavailable in strict private browsing modes.
   }
@@ -49,6 +67,7 @@ async function persistSafeScanSummary(result: ScannerParseResult) {
 
 export function getLastScanResult(): ScannerParseResult | null {
   try {
+    if (!activeUserId || localStorage.getItem(LAST_SCAN_OWNER_KEY) !== activeUserId) return null;
     const raw = localStorage.getItem(LAST_SCAN_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as ScannerParseResult;
@@ -60,6 +79,7 @@ export function getLastScanResult(): ScannerParseResult | null {
 export function clearLastScanResult() {
   try {
     localStorage.removeItem(LAST_SCAN_KEY);
+    localStorage.removeItem(LAST_SCAN_OWNER_KEY);
   } catch {
     // Storage can be unavailable in strict private browsing modes.
   }
