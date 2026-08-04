@@ -143,9 +143,6 @@ function Hero() {
               </Link>
             </div>
 
-            <p className="anim-fade-in stagger-4 text-[12px] text-navy-400">
-              Not a law firm. No guaranteed score increases. Results vary.
-            </p>
           </div>
 
           <div className="hidden justify-center lg:flex">
@@ -340,11 +337,6 @@ function RealLifeGoals() {
           ))}
         </div>
 
-        <ScrollReveal variant="fade" delay={0.2} className="mt-6 text-center">
-          <p className="text-[11px] text-navy-400">
-            Credit Vivo does not guarantee loan, housing, insurance, or job approval.
-          </p>
-        </ScrollReveal>
       </div>
     </section>
   );
@@ -383,9 +375,6 @@ function PricingPreview() {
             See full pricing details
             <ArrowRight size={13} />
           </Link>
-          <p className="mt-3 text-[10px] text-navy-400">
-            Credit service companies cannot promise a result or credit score increase. Results vary by consumer.
-          </p>
         </ScrollReveal>
       </div>
     </section>
@@ -452,9 +441,6 @@ function FinalCTA() {
             Join Free
             <ArrowRight size={15} />
           </a>
-          <p className="mt-4 text-[11px] text-navy-400">
-            Credit Vivo is not a law firm. We do not promise specific results or credit score increases.
-          </p>
         </ScrollReveal>
       </div>
     </section>

@@ -969,3 +969,38 @@ Remarks Account information disputed by consumer (FCRA); >PLACED FOR COLLECTION<
     data = result_to_dict(result)
     assert len(data["tradelines"]) == 2
     assert data["cross_bureau_groups"] == []
+
+
+def test_dense_adjacent_accounts_stay_isolated_across_three_bureaus():
+    reports = {}
+    for bureau in ("Experian", "Equifax", "TransUnion"):
+        reports[f"{bureau.lower()}-dense.pdf"] = {"bureau": bureau, "text": f"""
+--- PAGE 1 ---
+{bureau} Credit Report
+MIDLAND CREDIT MANAGEMENT
+Account Number: 1234567890
+Account Type: Collection
+Original Creditor: CAPITAL ONE BANK
+Balance: $1,234
+Status: Collection
+Date Opened: 01/10/2021
+Remarks: Account placed for collection
+CAPITAL ONE
+Account Number: 999988881111
+Account Type: Credit Card
+Balance: $0
+Past Due: $0
+Status: Charge-off transferred or sold
+Date Opened: 05/01/2019
+Date of First Delinquency: 10/01/2020
+"""}
+    data = result_to_dict(parse_reports(reports))
+    assert len(data["tradelines"]) == 6
+    for bureau in ("Experian", "Equifax", "TransUnion"):
+        rows = [item for item in data["tradelines"] if item["bureau"] == bureau]
+        assert {item["account_number_masked"] for item in rows} == {"*7890", "*1111"}
+        midland = next(item for item in rows if item["account_number_masked"] == "*7890")
+        capital_one = next(item for item in rows if item["account_number_masked"] == "*1111")
+        assert "charge-off" not in midland["raw_block"].lower()
+        assert "midland" not in capital_one["raw_block"].lower()
+        assert "past_due" not in capital_one["negative_signals"]

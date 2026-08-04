@@ -539,6 +539,63 @@ def page_split(text: str) -> List[Tuple[Optional[int], str]]:
     return pages
 
 
+def split_dense_account_sections(page_text: str) -> List[str]:
+    """Split pages whose extracted text has no blank lines between accounts."""
+    lines = [clean_text(line) for line in page_text.splitlines()]
+    account_indexes = [
+        index for index, line in enumerate(lines)
+        if re.match(r"^\s*(?:Account\s*(?:Number|#)|Acct\s*(?:Number|#))\s*:?\s*", line, flags=re.I)
+    ]
+    if len(account_indexes) < 2:
+        return [page_text]
+
+    field_prefix = re.compile(
+        r"^(?:Account\s*(?:Number|#|Type|Status|Name)|Acct\s*(?:Number|#)|"
+        r"Original\s+Creditor|Balance|Past\s+Due|Status|Pay\s+Status|Remarks|"
+        r"Date\b|High\s+(?:Balance|Credit)|Credit\s+Limit|Payment\s+History|"
+        r"Responsibility|Owner|Terms|Scheduled\s+Payment|Actual\s+Payment)\b",
+        flags=re.I,
+    )
+    report_header = re.compile(r"^(?:Experian|Equifax|TransUnion)(?:\s+Credit)?\s+Report\b", flags=re.I)
+    starts: List[int] = []
+    previous_account_index = -1
+    for account_index in account_indexes:
+        start = account_index
+        lower_bound = max(previous_account_index + 1, account_index - 8)
+        run_top = None
+        for candidate_index in range(account_index - 1, lower_bound - 1, -1):
+            candidate = lines[candidate_index].strip()
+            if not candidate:
+                if run_top is not None:
+                    break
+                continue
+            boundaryish = (
+                field_prefix.match(candidate) or report_header.match(candidate)
+                or len(candidate) > 140
+                or re.match(r"^(?:\$|\d{1,2}/\d{1,2}/\d{2,4}\b)", candidate)
+            )
+            if boundaryish:
+                if run_top is not None:
+                    break
+                continue
+            run_top = candidate_index
+        if run_top is not None:
+            start = run_top
+        starts.append(start)
+        previous_account_index = account_index
+
+    starts = sorted(set(starts))
+    if len(starts) < 2:
+        return [page_text]
+    sections = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(lines)
+        section = clean_text("\n".join(lines[start:end]))
+        if section:
+            sections.append(section)
+    return sections or [page_text]
+
+
 def candidate_blocks(text: str) -> List[Tuple[Optional[int], str]]:
     blocks: List[Tuple[Optional[int], str]] = []
 
@@ -547,48 +604,37 @@ def candidate_blocks(text: str) -> List[Tuple[Optional[int], str]]:
         if not page_text:
             continue
 
-        # Main split using paragraph gaps
-        chunks = re.split(r"\n\s*\n", page_text)
-        buffer: List[str] = []
-
-        for chunk in chunks:
-            c = clean_text(chunk)
-            if len(c) < 20:
-                continue
-            lower = c.lower()
-            continuation = lower.startswith((
-                "date opened",
-                "date of last activity",
-                "date of last payment",
-                "scheduled payment",
-                "actual payment",
-                "amount past due",
-                "payment history",
-                "terms",
-                "high balance",
-                "credit limit",
-                "by ",
-            ))
-            starts = (
-                any(label in lower for label in ["account number", "account #", "payment status", "account status", "account name"])
-                or any(term in lower for term in NEGATIVE_TERMS)
-            ) and not continuation
-            if starts and buffer:
+        for account_section in split_dense_account_sections(page_text):
+            chunks = re.split(r"\n\s*\n", account_section)
+            buffer: List[str] = []
+            for chunk in chunks:
+                c = clean_text(chunk)
+                if len(c) < 20:
+                    continue
+                lower = c.lower()
+                continuation = lower.startswith((
+                    "date opened", "date of last activity", "date of last payment",
+                    "scheduled payment", "actual payment", "amount past due",
+                    "payment history", "terms", "high balance", "credit limit", "by ",
+                ))
+                starts = (
+                    any(label in lower for label in ["account number", "account #", "payment status", "account status", "account name"])
+                    or any(term in lower for term in NEGATIVE_TERMS)
+                ) and not continuation
+                if starts and buffer:
+                    block = "\n".join(buffer)
+                    if len(block) > 80:
+                        blocks.append((page_num, block))
+                    buffer = [c]
+                else:
+                    buffer.append(c)
+                if len("\n".join(buffer)) > 3500:
+                    blocks.append((page_num, "\n".join(buffer)))
+                    buffer = []
+            if buffer:
                 block = "\n".join(buffer)
                 if len(block) > 80:
                     blocks.append((page_num, block))
-                buffer = [c]
-            else:
-                buffer.append(c)
-
-            if len("\n".join(buffer)) > 3500:
-                blocks.append((page_num, "\n".join(buffer)))
-                buffer = []
-
-        if buffer:
-            block = "\n".join(buffer)
-            if len(block) > 80:
-                blocks.append((page_num, block))
 
     return dedupe_blocks(blocks)
 
@@ -1486,6 +1532,15 @@ def classify_negative_status(t: NormalizedTradeline) -> dict:
     signals = []
     negative_type = ""
     for signal_type, patterns in signal_patterns.items():
+        if signal_type == "past_due":
+            past_due_amount = money_to_number(t.past_due)
+            explicit_delinquency = re.search(
+                r"\bdelinquent\b|\bseriously past due\b|\b(?:30|60|90|120|150|180)\s+days?\s+(?:late|past due)\b",
+                " ".join([t.status, t.pay_status, t.remarks]),
+                flags=re.I,
+            )
+            if past_due_amount is not None and past_due_amount <= 0 and not explicit_delinquency:
+                continue
         for pattern in patterns:
             if re.search(pattern, blob, flags=re.I):
                 signals.append(signal_type)
