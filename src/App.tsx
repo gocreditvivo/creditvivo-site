@@ -28,6 +28,8 @@ import GrowthAI from './pages/GrowthAI';
 import OwnerAICommand from './pages/OwnerAICommand';
 import Status from './pages/Status';
 import Member from './pages/Member';
+import Login from './pages/Login';
+import ProtectedRoute from './auth/ProtectedRoute';
 import { getAssignedVariant, type VariantId } from './config/landingPages';
 import type { ComponentType } from 'react';
 
@@ -72,19 +74,21 @@ export default function App() {
           <Route path="/collection-not-mine" element={<CollectionNotMine />} />
           <Route path="/status" element={<Status />} />
           <Route path="/member" element={<Member />} />
+          <Route path="/login" element={<Login />} />
         </Route>
 
         {/* Member pages */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Dashboard />} />
-          <Route path="/scan" element={<FreeScan />} />
-          <Route path="/findings" element={<Findings />} />
-          <Route path="/founder-health" element={<FounderHealth />} />
-          <Route path="/owner-ai" element={<OwnerAICommand />} />
-          <Route path="/growth-ai" element={<GrowthAI />} />
-          <Route path="/admin-review" element={<AdminReview />} />
-          <Route path="/bank-link" element={<BankLink />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/scan" element={<FreeScan />} />
+            <Route path="/findings" element={<Findings />} />
+            <Route path="/founder-health" element={<FounderHealth />} />
+            <Route path="/owner-ai" element={<OwnerAICommand />} />
+            <Route path="/growth-ai" element={<GrowthAI />} />
+            <Route path="/admin-review" element={<AdminReview />} />
+            <Route path="/bank-link" element={<BankLink />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

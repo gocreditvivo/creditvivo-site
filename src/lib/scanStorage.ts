@@ -1,4 +1,5 @@
 import type { ScannerParseResult } from './scannerApi';
+import { supabase } from './supabaseClient';
 
 const LAST_SCAN_KEY = 'creditVivoLastScanResult';
 
@@ -8,6 +9,42 @@ export function saveLastScanResult(result: ScannerParseResult) {
   } catch {
     // Storage can be unavailable in strict private browsing modes.
   }
+  void persistSafeScanSummary(result);
+}
+
+async function persistSafeScanSummary(result: ScannerParseResult) {
+  if (!supabase) return;
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+  if (!user) return;
+
+  const { data: scan, error } = await supabase.from('creditvivo_scans').insert({
+    user_id: user.id,
+    mode: result.job_id === 'demo_scan' ? 'demo' : 'scanner',
+    status: 'ready',
+    review_items_count: result.review_items_count ?? 0,
+    issues_count: result.issues_count ?? 0,
+    customer_summary: result.customer_summary ?? {},
+  }).select('id').single();
+  if (error || !scan) return;
+
+  const reviewById = new Map((result.review_items_preview ?? []).map((item) => [item.id, item]));
+  const findings = (result.issues_preview ?? []).map((issue) => {
+    const review = issue.related_tradeline_ids?.length ? reviewById.get(issue.related_tradeline_ids[0]) : undefined;
+    return {
+      scan_id: scan.id,
+      user_id: user.id,
+      finding_key: issue.id,
+      bureau: review?.bureau ?? null,
+      account_name: review?.account_name ?? null,
+      account_number_masked: review?.account_number_masked ?? null,
+      finding_type: issue.issue_type,
+      severity: issue.severity,
+      explanation: issue.customer_explanation,
+      review_status: 'needs_verification',
+    };
+  });
+  if (findings.length) await supabase.from('creditvivo_findings').insert(findings);
 }
 
 export function getLastScanResult(): ScannerParseResult | null {

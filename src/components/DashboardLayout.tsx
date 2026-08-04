@@ -12,8 +12,10 @@ import {
   Activity,
   Megaphone,
   BrainCircuit,
+  LogOut,
 } from 'lucide-react';
 import UnderConstructionNotice from './UnderConstructionNotice';
+import { useAuth } from '../auth/authContext';
 
 const sideLinks = [
   { to: '/dashboard', label: 'Roadmap', icon: Compass },
@@ -31,6 +33,7 @@ const sideLinks = [
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen flex bg-navy-50/30">
@@ -68,6 +71,9 @@ export default function DashboardLayout() {
           <ArrowLeft size={13} />
           Back to site
         </Link>
+        <button type="button" onClick={() => void signOut()} className="mt-2 flex items-center gap-2 px-3 py-2 text-left text-xs text-navy-400 hover:text-navy-700">
+          <LogOut size={13} /> Sign out{user?.email ? ` (${user.email})` : ''}
+        </button>
       </aside>
 
       {/* Main */}
