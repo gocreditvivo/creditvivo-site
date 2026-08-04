@@ -5,7 +5,7 @@ type HeaderLink =
   | { to: string; label: string; primary?: false };
 
 const headerLinks: HeaderLink[] = [
-  { href: '/dashboard.html', label: 'Get Started', primary: true },
+  { href: '/login', label: 'Get Started', primary: true },
   { to: '/why', label: 'Why Credit Vivo' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/faq', label: 'FAQ' },
@@ -125,7 +125,7 @@ function Footer() {
           <div>
             <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">Members</h4>
             <div className="space-y-2">
-              <a href="/dashboard.html" className="block text-xs text-navy-400 hover:text-white transition-colors">Sign In</a>
+              <a href="/login" className="block text-xs text-navy-400 hover:text-white transition-colors">Sign In</a>
               <Link to="/scan" className="block text-xs text-navy-400 hover:text-white transition-colors">Free Scan</Link>
               <Link to="/findings" className="block text-xs text-navy-400 hover:text-white transition-colors">Findings</Link>
             </div>

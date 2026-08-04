@@ -134,7 +134,7 @@ function Hero() {
             </p>
 
             <div className="anim-fade-in stagger-3 mb-6 flex flex-wrap gap-3">
-              <a href="/dashboard.html" className="btn-primary shine-on-hover text-sm py-3 px-6">
+              <a href="/login" className="btn-primary shine-on-hover text-sm py-3 px-6">
                 Start Free Credit Check-In
                 <ArrowRight size={15} />
               </a>
@@ -448,7 +448,7 @@ function FinalCTA() {
             See possible report errors first. Upgrade later if you want guided next steps or
             attorney-ready support.
           </p>
-          <a href="/dashboard.html" className="btn-mint shine-on-hover text-sm py-3 px-7">
+          <a href="/login" className="btn-mint shine-on-hover text-sm py-3 px-7">
             Join Free
             <ArrowRight size={15} />
           </a>

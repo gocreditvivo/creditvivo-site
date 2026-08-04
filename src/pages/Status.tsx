@@ -41,7 +41,7 @@ export default function Status() {
               Credit Vivo monitors the website, scanner backend, and report workflow. If a service is temporarily unavailable, we switch to safe review mode and avoid new credit report uploads until the system is ready.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/dashboard.html" className="btn-primary">
+              <a href="/login" className="btn-primary">
                 Member Login
               </a>
               <a href="/faq" className="btn-soft">
