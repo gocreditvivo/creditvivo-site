@@ -122,4 +122,3 @@ def test_health_check_logged_without_raw_credit_data():
     assert "01/02/1980" not in new_log
     assert "CREDIT ONE BANK" not in new_log
     assert "Balance: $59" not in new_log
-
