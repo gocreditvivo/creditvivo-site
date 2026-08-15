@@ -40,6 +40,10 @@ scanner_backend/.venv/
 scanner_backend/.env
 scanner_backend/.pytest-tmp*/
 scanner_backend/.pytest-tmp-*/
+scanner_backend/pytest-of-*/
+scanner_backend/tmp*/
+scanner_backend/t/
+scanner_backend/ti/
 scanner_backend/**/node-compile-cache/
 scanner_backend/**/node-jiti/
 work/pytest-tmp/

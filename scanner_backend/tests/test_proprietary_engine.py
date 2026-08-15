@@ -1,4 +1,7 @@
-from credit_vivo_proprietary_engine import build_three_bureau_comparison_rows, is_bad_account_name, parse_reports, result_to_dict, validate_workbook_output, write_outputs
+import json
+import csv
+
+from credit_vivo_proprietary_engine import build_three_bureau_comparison_rows, is_bad_account_name, mask_account_number, parse_reports, result_to_dict, validate_workbook_output, write_outputs
 from openpyxl import load_workbook
 
 SAMPLE = """
@@ -215,7 +218,7 @@ Loan/Account Type: Debt Buyer Account | Status:
 Date Opened: 02/17/2022 Date of 1st Delinquency: 07/07/2021
 Amount Past Due: $1,473
 
-Prepared for: TIM K DO Date: June 29, 2026 Confirmation # 6180577433
+Prepared for: SYNTHETIC CONSUMER Date: June 29, 2026 Confirmation # SYNTHETIC-0001
 MIDLAND CREDIT MANAGEMENT - Closed
 Date Reported: 06/25/2026 | Balance: $1,473
 Account Number: *8933
@@ -498,7 +501,7 @@ def test_parse_sample_report(tmp_path):
         "Account Name",
         "Account Number",
         "Raw Block Hash",
-        "Raw Text Snippet",
+            "Sanitized Evidence Lines",
         "Parser Confidence",
         "Admin Review Required",
     ]
@@ -517,7 +520,7 @@ def test_parse_sample_report(tmp_path):
         for row in range(2, qa_verification.max_row + 1)
         for column in range(1, qa_verification.max_column + 1)
     )
-    assert "Raw evidence present" in qa_text
+    assert "Evidence traceability present" in qa_text
     assert "Field evidence present" in qa_text
     assert "Production approval status" in qa_text
     security_audit = workbook["Security Audit Summary"]
@@ -928,7 +931,7 @@ def test_parser_fills_columns_from_realistic_bureau_snippets():
     assert "disputed by consumer" in by_bureau["Experian"]["remarks"].lower()
 
     assert by_bureau["TransUnion"]["account_name"] == "CREDIT ONE BANK"
-    assert by_bureau["TransUnion"]["account_number_masked"].endswith("8171")
+    assert by_bureau["TransUnion"]["account_number_masked"] == "****"
     assert by_bureau["TransUnion"]["account_type"] == "Revolving Account"
     assert by_bureau["TransUnion"]["status"] == "Current Account"
     assert by_bureau["TransUnion"]["date_reported"] == "03/11/2026"
@@ -994,13 +997,81 @@ Status: Charge-off transferred or sold
 Date Opened: 05/01/2019
 Date of First Delinquency: 10/01/2020
 """}
-    data = result_to_dict(parse_reports(reports))
+    parsed = parse_reports(reports)
+    data = result_to_dict(parsed)
     assert len(data["tradelines"]) == 6
     for bureau in ("Experian", "Equifax", "TransUnion"):
         rows = [item for item in data["tradelines"] if item["bureau"] == bureau]
         assert {item["account_number_masked"] for item in rows} == {"*7890", "*1111"}
         midland = next(item for item in rows if item["account_number_masked"] == "*7890")
         capital_one = next(item for item in rows if item["account_number_masked"] == "*1111")
-        assert "charge-off" not in midland["raw_block"].lower()
-        assert "midland" not in capital_one["raw_block"].lower()
+        internal_midland = next(item for item in parsed.tradelines if item.bureau == bureau and item.account_number_masked == "*7890")
+        internal_capital_one = next(item for item in parsed.tradelines if item.bureau == bureau and item.account_number_masked == "*1111")
+        assert "charge-off" not in internal_midland.raw_block.lower()
+        assert "midland" not in internal_capital_one.raw_block.lower()
         assert "past_due" not in capital_one["negative_signals"]
+
+
+def test_account_masking_never_exposes_short_or_leading_clear_values():
+    assert mask_account_number("1234567890") == "*7890"
+    assert mask_account_number("****7890") == "*7890"
+    assert mask_account_number("444796XXXXXXXXXX") == "****"
+    assert mask_account_number("444796268171****") == "****"
+    assert mask_account_number("123") == "***"
+    assert mask_account_number("AB12") == "****"
+
+
+def test_all_persisted_outputs_redact_raw_account_and_identity_values(tmp_path):
+    raw_account = "9876543210123456"
+    raw_ssn = "123-45-6789"
+    sample = f"""
+--- PAGE 1 ---
+Experian Credit Report
+
+SYNTHETIC BANK
+Account Number: {raw_account}
+Account Type: Collection
+Balance: $420
+Status: Collection
+Consumer SSN: {raw_ssn}
+Remarks: =HYPERLINK("https://invalid.test","synthetic")
+"""
+    result = parse_reports({"synthetic-privacy-report.txt": {"text": sample, "bureau": "Experian"}})
+    data = result_to_dict(result)
+    payload = json.dumps(data, ensure_ascii=False)
+
+    assert raw_account not in payload
+    assert raw_ssn not in payload
+    assert data["tradelines"][0]["account_number_masked"] == "*3456"
+    assert "raw_block" not in data["tradelines"][0]
+    assert all("raw_value" not in evidence for evidence in data["tradelines"][0]["field_evidence"].values())
+
+    write_outputs(result, tmp_path)
+    persisted_text = ""
+    for path in tmp_path.iterdir():
+        if path.suffix.lower() in {".json", ".csv", ".txt"}:
+            persisted_text += path.read_text(encoding="utf-8", errors="ignore")
+
+    workbook = load_workbook(tmp_path / "credit_vivo_desktop_scanner_output.xlsx", data_only=False)
+    workbook_text = " ".join(
+        str(cell.value or "")
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+    )
+
+    assert raw_account not in persisted_text
+    assert raw_ssn not in persisted_text
+    assert raw_account not in workbook_text
+    assert raw_ssn not in workbook_text
+    assert not any(
+        cell.data_type == "f"
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+    )
+
+    for csv_path in tmp_path.glob("*.csv"):
+        with csv_path.open(newline="", encoding="utf-8") as handle:
+            for row in csv.reader(handle):
+                assert all(not value.lstrip().startswith(("=", "+", "-", "@")) for value in row)

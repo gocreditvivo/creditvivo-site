@@ -30,6 +30,7 @@ import Status from './pages/Status';
 import Member from './pages/Member';
 import Login from './pages/Login';
 import ProtectedRoute from './auth/ProtectedRoute';
+import RoleProtectedRoute from './auth/RoleProtectedRoute';
 import { getAssignedVariant, type VariantId } from './config/landingPages';
 import type { ComponentType } from 'react';
 
@@ -83,11 +84,13 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/scan" element={<FreeScan />} />
             <Route path="/findings" element={<Findings />} />
-            <Route path="/founder-health" element={<FounderHealth />} />
-            <Route path="/owner-ai" element={<OwnerAICommand />} />
-            <Route path="/growth-ai" element={<GrowthAI />} />
-            <Route path="/admin-review" element={<AdminReview />} />
             <Route path="/bank-link" element={<BankLink />} />
+            <Route element={<RoleProtectedRoute allowedRoles={['founder', 'admin']} />}>
+              <Route path="/founder-health" element={<FounderHealth />} />
+              <Route path="/owner-ai" element={<OwnerAICommand />} />
+              <Route path="/growth-ai" element={<GrowthAI />} />
+              <Route path="/admin-review" element={<AdminReview />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

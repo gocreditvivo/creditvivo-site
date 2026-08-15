@@ -1,0 +1,27 @@
+--- PAGE 1 ---
+Experian Credit Report
+SYNTHETIC ORIGINAL BANK
+Account Number: 500000000005
+Account Type: Credit Card
+Balance: $0
+Status: Charge-off transferred or sold
+Date Opened: 04/01/2020
+Date of First Delinquency: 11/01/2021
+
+SYNTHETIC DEBT BUYER
+Account Number: 600000000006
+Account Type: Collection
+Original Creditor: SYNTHETIC ORIGINAL BANK
+Balance: $950
+Status: Collection
+Date Opened: 12/01/2021
+Remarks: Synthetic debt buyer account
+
+SYNTHETIC DEBT BUYER
+Account Number: 600000000006
+Account Type: Collection
+Original Creditor: SYNTHETIC ORIGINAL BANK
+Balance: $950
+Status: Collection
+Date Opened: 12/01/2021
+Remarks: Synthetic duplicate reporting fixture

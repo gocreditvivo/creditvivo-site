@@ -51,7 +51,6 @@ function combinedText(item: ScannerReviewItem) {
     item.pay_status,
     item.remarks,
     item.payment_history_summary,
-    item.raw_block,
   ]
     .filter(Boolean)
     .join(' ')

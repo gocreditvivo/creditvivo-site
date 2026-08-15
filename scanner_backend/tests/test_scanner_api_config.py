@@ -4,10 +4,10 @@ from fastapi import HTTPException
 from main import HEALTH_AUDIT_LOG, health, require_scanner_access_or_block, require_scanner_health_or_block, run_pre_scan_health_check, run_scanner_preflight_health_check
 
 
-def test_scanner_saves_raw_text_by_default():
+def test_scanner_does_not_save_raw_text_by_default():
     status = health()
 
-    assert status["write_raw_text"] is True
+    assert status["write_raw_text"] is False
     assert status["pdf_text_engine"] == "pypdf"
 
 

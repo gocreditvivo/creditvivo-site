@@ -110,11 +110,75 @@ def mask_account_number(value: str) -> str:
     value = (value or "").strip()
     if not value:
         return ""
-    digits = re.sub(r"\D", "", value)
-    if len(digits) >= 4:
-        return "*" + digits[-4:]
-    if len(value) >= 6:
-        return value[:2] + "..." + value[-2:]
+
+    # Preserve only an already-visible trailing identifier. Reports sometimes
+    # render a masked value as `****1234`; the inverse form `1234XXXX` must not
+    # be interpreted as revealing the last four because those digits are a
+    # clear prefix, not an approved suffix.
+    if re.search(r"[*Xx#•]", value):
+        trailing_clear = re.search(r"[*Xx#•][*Xx#•\s._-]*([A-WYZa-wyz0-9]{1,4})$", value)
+        if trailing_clear:
+            return "*" + trailing_clear.group(1)[-4:]
+        return "****"
+
+    token = re.sub(r"[^A-Za-z0-9]", "", value)
+    if not token:
+        return ""
+    if len(token) <= 4:
+        return "*" * len(token)
+    return "*" + token[-4:]
+
+
+def sanitize_sensitive_text(value: str) -> str:
+    """Redact identifiers before any parser data crosses an output boundary."""
+    text = str(value or "")
+    text = re.sub(r"\b\d{3}-?\d{2}-?\d{4}\b", "***-**-****", text)
+    text = re.sub(
+        r"((?:date\s+of\s+birth|dob)\s*[:#-]?\s*)"
+        r"(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:19|20)\d{2}\b",
+        r"\1**/**/****",
+        text,
+        flags=re.I,
+    )
+
+    # Keep a match on one physical line so a raw evidence block is not
+    # swallowed after the account value.
+    account_pattern = re.compile(
+        r"((?:account|acct)\s*(?:number|no\.?|#)\s*[:#-]?\s*)([A-Za-z0-9*Xx#•._ -]{2,})",
+        flags=re.I,
+    )
+    account_pattern = re.compile(
+        account_pattern.pattern
+        .replace(r"\s*", r"[ \t]*")
+        .replace(r"no\.?|#", r"no\.?(?![A-Za-z])|#"),
+        flags=re.I,
+    )
+    text = account_pattern.sub(lambda match: match.group(1) + mask_account_number(match.group(2)), text)
+
+    # Long uninterrupted numbers in evidence are identifiers or confirmation
+    # values, not amounts/dates. Retain only a last-four reference.
+    text = re.sub(r"\b\d{6,}\b", lambda match: "*" + match.group(0)[-4:], text)
+    return text
+
+
+def sanitize_output_payload(value):
+    """Recursively sanitize every persisted/API/exported parser value."""
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            if key in {"raw_block", "raw_value"}:
+                continue
+            if key == "account_number_masked" and isinstance(item, str):
+                sanitized[key] = mask_account_number(str(item or ""))
+            else:
+                sanitized[key] = sanitize_output_payload(item)
+        return sanitized
+    if isinstance(value, list):
+        return [sanitize_output_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_output_payload(item) for item in value)
+    if isinstance(value, str):
+        return sanitize_sensitive_text(value)
     return value
 
 
@@ -259,6 +323,7 @@ MONEY = r"\$?\s?[0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?|\$?\s?[0-9]+(?:\.\d{2})?"
 
 COMMON_FIELD_PATTERNS: Dict[str, List[str]] = {
     "account_number_masked": [
+        r"(?:account\s*(?:#|number|no\.?)|acct\s*(?:#|number|no\.?))\s*[:\-]?\s*([A-Za-z0-9\*xX# -]{3,40})$",
         r"(?:account\s*(?:#|number|no\.?)|acct\s*(?:#|number|no\.?))\s*[:\-]?\s*([A-Za-z0-9\*\-xX]{3,32})",
         r"^\s*([A-Za-z0-9]{4,}\*{2,}[A-Za-z0-9\*]*)\s*$",
     ],
@@ -994,7 +1059,7 @@ def guess_account_name(block: str) -> str:
         return labeled if not is_bad_account_name(labeled) else "Review Item"
 
     candidates = []
-    for line in lines[:26]:
+    for idx, line in enumerate(lines[:26]):
         lower = line.lower()
         if any(lower.startswith(x) for x in bad):
             continue
@@ -1013,7 +1078,13 @@ def guess_account_name(block: str) -> str:
         if re.fullmatch(r"[A-Z][A-Z ]{1,30}", line) and len(line.split()) <= 4:
             # Skip consumer-name header lines in bureau PDFs. Creditor names
             # usually appear near account fields and score higher below.
-            if not re.search(r"\b(BANK|CREDIT|CAPITAL|MIDLAND|FORD|FEDERAL|JPM|JPMCB|CAINE|JEFFERSON|RESURGENT|LVNV|MACYS|CBNA|MOTOR|FUNDING|SYSTEM|SYSTEMS|MANAGEMENT|SERVICES|FIRSTPOINT|RESOURCES)\b", line):
+            following = lines[idx + 1].lower() if idx + 1 < len(lines) else ""
+            header_positioned = following.startswith((
+                "account number", "account #", "account type", "acct number",
+                "acct #", "original creditor", "balance", "status", "pay status",
+                "date opened",
+            ))
+            if (not header_positioned) and not re.search(r"\b(BANK|CREDIT|CAPITAL|MIDLAND|FORD|FEDERAL|JPM|JPMCB|CAINE|JEFFERSON|RESURGENT|LVNV|MACYS|CBNA|MOTOR|FUNDING|SYSTEM|SYSTEMS|MANAGEMENT|SERVICES|FIRSTPOINT|RESOURCES)\b", line):
                 continue
         if len(line) < 3 or len(line) > 85:
             continue
@@ -3439,8 +3510,8 @@ def build_fcra_compliance_review(tradelines: List[dict], issues: List[dict], met
 
 
 def result_to_dict(result: ParseResult) -> dict:
-    tradelines = [asdict(t) for t in result.tradelines]
-    issues = [asdict(i) for i in result.issues]
+    tradelines = [sanitize_output_payload(asdict(t)) for t in result.tradelines]
+    issues = [sanitize_output_payload(asdict(i)) for i in result.issues]
     metro2_requirement_review = build_metro2_requirement_review(tradelines)
     field_compliance_audit = build_field_compliance_audit(tradelines)
     eoscar_packaging_review = build_eoscar_packaging_review(issues, tradelines)
@@ -3477,19 +3548,26 @@ def result_to_dict(result: ParseResult) -> dict:
         "eoscar_public_facts": EOSCAR_PUBLIC_FACTS,
         "eoscar_packaging_review": eoscar_packaging_review,
     }
+    data = sanitize_output_payload(data)
     data["raw_evidence_index"] = build_raw_evidence_index_rows(data)[1:]
     data["qa_verification"] = build_qa_verification_rows(data)[1:]
-    return data
+    return sanitize_output_payload(data)
 
 
 def _safe_workbook_cell(value):
     if isinstance(value, (list, tuple)):
-        return "; ".join(str(item) for item in value)
+        value = "; ".join(str(item) for item in value)
     if isinstance(value, dict):
-        return json.dumps(value, ensure_ascii=False)
+        value = json.dumps(value, ensure_ascii=False)
     if value is None:
         return ""
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
     return value
+
+
+def _safe_csv_row(row: dict) -> dict:
+    return {key: _safe_workbook_cell(value) for key, value in row.items()}
 
 
 def _write_workbook_sheet(sheet, rows: List[List[object]]) -> None:
@@ -4249,7 +4327,7 @@ def build_raw_evidence_index_rows(data: dict) -> List[List[object]]:
         "Account Name",
         "Account Number",
         "Raw Block Hash",
-        "Raw Text Snippet",
+        "Sanitized Evidence Lines",
         "Parser Confidence",
         "Admin Review Required",
     ]]
@@ -4263,7 +4341,13 @@ def build_raw_evidence_index_rows(data: dict) -> List[List[object]]:
             item.get("account_name", ""),
             item.get("account_number_masked", ""),
             item.get("raw_block_hash", ""),
-            clean_text(item.get("raw_block", ""))[:900],
+            " | ".join(
+                dict.fromkeys(
+                    clean_text(evidence.get("raw_line", ""))
+                    for evidence in (item.get("field_evidence", {}) or {}).values()
+                    if isinstance(evidence, dict) and evidence.get("raw_line")
+                )
+            )[:900],
             item.get("confidence_score", ""),
             "Yes" if item.get("needs_admin_review") else "No",
         ])
@@ -4276,8 +4360,8 @@ def build_qa_verification_rows(data: dict) -> List[List[object]]:
     letters = data.get("recommended_letter_queue", [])
     comparison_headers = build_three_bureau_comparison_rows(data)[0]
     duplicate_headers = len(comparison_headers) != len(set(comparison_headers))
-    all_have_raw = all(
-        item.get("source_file_hash") and item.get("raw_block_id") and item.get("raw_block_hash") and item.get("raw_block")
+    all_have_traceability = all(
+        item.get("source_file_hash") and item.get("raw_block_id") and item.get("raw_block_hash")
         for item in tradelines
     )
     key_fields = ["account_name", "account_number_masked", "account_type", "balance", "status", "date_opened", "date_reported"]
@@ -4311,7 +4395,7 @@ def build_qa_verification_rows(data: dict) -> List[List[object]]:
     ]
     checks = [
         ("QA-001", "Bureau detection pass/fail", all((item.get("bureau") or "").strip() for item in tradelines), "High", "Every parsed account has a bureau.", "Fix page/header bureau detection."),
-        ("QA-002", "Raw evidence present", all_have_raw, "High", "Every account has source hash, raw block ID/hash, and raw text.", "Attach raw evidence before approval."),
+        ("QA-002", "Evidence traceability present", all_have_traceability, "High", "Every account has source hash and opaque block ID/hash; raw blocks are not exported.", "Attach evidence hashes before approval."),
         ("QA-003", "Field evidence present", field_evidence_present, "High", "; ".join(missing_evidence[:10]) or "Key extracted fields have evidence objects.", "Add field evidence for missing fields."),
         ("QA-004", "Negative classifier result", not positive_leak, "High", "Side By Side Negative excludes positive-only rows.", "Tighten negative classifier."),
         ("QA-005", "Issue gating result", issue_gating_ok, "High", f"issues={len(issues)} letters={len(letters)}", "Do not queue letters when no issue exists."),
@@ -4371,7 +4455,9 @@ def validate_workbook_output(path: Path) -> dict:
         ]
         checks.append({"check": "qa_high_medium_pass", "result": not failed, "detail": "; ".join(failed)})
     approved = all(check["result"] for check in checks)
-    return {"production_approval": "approved" if approved else "blocked", "checks": checks}
+    result = {"production_approval": "approved" if approved else "blocked", "checks": checks}
+    wb.close()
+    return result
 
 
 def write_desktop_workbook(data: dict, out_dir: Path) -> None:
@@ -5046,6 +5132,7 @@ def write_desktop_workbook(data: dict, out_dir: Path) -> None:
     ])
 
     wb.save(out_dir / "credit_vivo_desktop_scanner_output.xlsx")
+    wb.close()
 
 
 def write_outputs(result: ParseResult, out_dir: Path, pre_scan_health_check: Optional[dict] = None) -> None:
@@ -5056,12 +5143,12 @@ def write_outputs(result: ParseResult, out_dir: Path, pre_scan_health_check: Opt
     (out_dir / "credit_vivo_parser_result.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     # Tradelines CSV
-    tradeline_rows = [asdict(t) for t in result.tradelines]
+    tradeline_rows = data.get("tradelines", [])
     if tradeline_rows:
         with (out_dir / "tradelines.csv").open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=list(tradeline_rows[0].keys()))
             writer.writeheader()
-            writer.writerows(tradeline_rows)
+            writer.writerows(_safe_csv_row(row) for row in tradeline_rows)
 
     # Issues CSV - flatten evidence count only
     issue_rows = []
@@ -5076,14 +5163,14 @@ def write_outputs(result: ParseResult, out_dir: Path, pre_scan_health_check: Opt
         with (out_dir / "review_issues.csv").open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=list(issue_rows[0].keys()))
             writer.writeheader()
-            writer.writerows(issue_rows)
+            writer.writerows(_safe_csv_row(row) for row in issue_rows)
 
     date_rows = data.get("dates_found_audit", [])
     if date_rows:
         with (out_dir / "dates_found_audit.csv").open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=list(date_rows[0].keys()))
             writer.writeheader()
-            writer.writerows(date_rows)
+            writer.writerows(_safe_csv_row(row) for row in date_rows)
 
     letter_sections = []
     for letter in data.get("recommended_letter_queue", []):

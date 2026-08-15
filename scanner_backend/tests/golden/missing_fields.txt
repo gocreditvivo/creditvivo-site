@@ -1,0 +1,9 @@
+--- PAGE 1 ---
+Equifax Credit Report
+
+SYNTHETIC RECOVERY GROUP
+Account Number: 700000000007
+Account Type: Collection
+Balance: $310
+Status: Collection
+Remarks: Original creditor and first-delinquency date intentionally absent

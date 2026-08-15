@@ -1,0 +1,29 @@
+--- PAGE 1 ---
+Experian Credit Report
+SYNTHETIC SHARED BANK
+Account Number: 400000000004
+Account Type: Credit Card
+Balance: $500
+Status: Charge-off
+Date Opened: 03/01/2022
+Date of First Delinquency: 08/01/2023
+
+--- PAGE 2 ---
+Equifax Credit Report
+SYNTHETIC SHARED BANK
+Account Number: 400000000004
+Account Type: Credit Card
+Balance: $725
+Status: Charge-off
+Date Opened: 03/01/2022
+Date of First Delinquency: 09/01/2023
+
+--- PAGE 3 ---
+TransUnion Credit Report
+SYNTHETIC SHARED BANK
+Account Number: 400000000004
+Account Type: Credit Card
+Balance: $500
+Status: Paid charge-off
+Date Opened: 03/01/2022
+Date of First Delinquency: 08/01/2023

@@ -16,11 +16,24 @@
 // upstream response body/status is relayed back.
 
 import { getToken } from '@vercel/connect';
+import { timingSafeEqual } from 'node:crypto';
 
 const CONNECTOR_ID = 'api.perplexity.ai/sky-bell';
 const SKY_BELL_BASE_URL = process.env.SKY_BELL_BASE_URL || 'https://api.perplexity.ai/sky-bell';
 
 export default async function handler(req, res) {
+  if (process.env.ENABLE_SKY_BELL_PROXY !== 'true') {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+  const expectedToken = process.env.INTERNAL_OPS_API_TOKEN || '';
+  const suppliedToken = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const tokensMatch = expectedToken.length > 0 && suppliedToken.length === expectedToken.length &&
+    timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(expectedToken));
+  if (!tokensMatch) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.status(405).json({ error: 'method_not_allowed', message: 'Use GET or POST.' });
     return;
@@ -30,6 +43,20 @@ export default async function handler(req, res) {
   const targetPath = typeof body.path === 'string' && body.path.length > 0 ? body.path : '/';
   const upstreamMethod = typeof body.method === 'string' ? body.method.toUpperCase() : 'GET';
   const payload = body.payload;
+  const allowedPaths = new Set(
+    String(process.env.SKY_BELL_ALLOWED_PATHS || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+  if (!targetPath.startsWith('/') || targetPath.includes('..') || targetPath.includes('://') || !allowedPaths.has(targetPath)) {
+    res.status(403).json({ error: 'path_not_allowed' });
+    return;
+  }
+  if (!['GET', 'POST'].includes(upstreamMethod)) {
+    res.status(405).json({ error: 'upstream_method_not_allowed' });
+    return;
+  }
 
   let token;
   try {

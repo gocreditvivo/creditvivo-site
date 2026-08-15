@@ -1,0 +1,10 @@
+--- PAGE 1 ---
+TransUnion Credit Report
+
+SYNTHETIC CREDIT UNION
+Account Number: 300000000003
+Account Type: Installment Loan
+Balance: $1,200
+Status: Pays As Agreed
+Date Opened: 02/01/2025
+Date Reported: 07/03/2026

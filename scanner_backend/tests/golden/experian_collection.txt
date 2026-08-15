@@ -1,0 +1,12 @@
+--- PAGE 1 ---
+Experian Credit Report
+
+SYNTHETIC COLLECTION SERVICES
+Account Number: 100000000001
+Account Type: Collection
+Original Creditor: SYNTHETIC BANK A
+Balance: $640
+Status: Collection
+Date Opened: 01/10/2024
+Date Reported: 07/01/2026
+Remarks: Synthetic account placed for collection

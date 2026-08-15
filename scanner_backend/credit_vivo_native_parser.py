@@ -22,6 +22,11 @@ from typing import Dict, List, Optional, Tuple
 import re
 import hashlib
 
+try:
+    from .credit_vivo_proprietary_engine import mask_account_number, sanitize_output_payload
+except ImportError:
+    from credit_vivo_proprietary_engine import mask_account_number, sanitize_output_payload
+
 
 BUREAU_NAMES = ("Experian", "Equifax", "TransUnion")
 
@@ -59,16 +64,6 @@ def normalize_space(text: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
-
-
-def mask_account_number(value: str) -> str:
-    value = value.strip()
-    digits = re.sub(r"\D", "", value)
-    if len(digits) >= 4:
-        return "*" + digits[-4:]
-    if len(value) > 8:
-        return value[:2] + "..." + value[-4:]
-    return value
 
 
 def make_id(*parts: str) -> str:
@@ -404,7 +399,7 @@ def parse_credit_reports(text_by_bureau: Dict[str, str]) -> Dict:
         "engine": "Credit Vivo Native Parser",
         "version": "15.3-no-paid-ai",
         "paid_ai_used": False,
-        "items": [asdict(x) for x in all_items],
+        "items": [sanitize_output_payload(asdict(x)) for x in all_items],
         "item_count": len(all_items),
         "bureau_match_notes": bureau_match_notes,
         "customer_message": "Your Credit Check-In was reviewed. Items are organized for review before any action is sent.",

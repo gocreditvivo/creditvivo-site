@@ -1,0 +1,11 @@
+--- PAGE 1 ---
+Equifax Credit Report
+
+SYNTHETIC CARD BANK
+Account Number: 200000000002
+Account Type: Credit Card
+Balance: $0
+Status: Charge-off transferred or sold
+Date Opened: 05/01/2021
+Date of First Delinquency: 10/01/2023
+Date Reported: 07/02/2026

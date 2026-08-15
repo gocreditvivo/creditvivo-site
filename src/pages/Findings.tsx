@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowRight, CheckCircle, Clock, Download, FileSearch, MailCheck, Route, ShieldCheck } from 'lucide-react';
-import { getScannerOutputDownloadUrl } from '../lib/scannerApi';
+import { downloadScannerOutput, getScannerOutputDownloadUrl } from '../lib/scannerApi';
 import { getLastScanResult } from '../lib/scanStorage';
 
 const categoryNames = [
@@ -49,13 +49,8 @@ function formatLabel(value: string) {
 export default function Findings() {
   const result = getLastScanResult();
 
-  async function downloadScannerFile(href: string, filename: string) {
-    const response = await fetch(href);
-    if (!response.ok) {
-      throw new Error(`Download failed with status ${response.status}`);
-    }
-
-    const blob = await response.blob();
+  async function downloadScannerFile(downloadName: 'workbook.xlsx' | 'issues.csv' | 'tradelines.csv' | 'letters.txt', filename: string) {
+    const blob = await downloadScannerOutput(result!.job_id, downloadName);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -107,6 +102,7 @@ export default function Findings() {
       label: 'Download desktop workbook',
       detail: 'One Excel file with 3-bureau comparison, Metro 2/FCRA review, errors, draft letters, and tracking tabs.',
       href: getScannerOutputDownloadUrl(result.job_id, 'workbook.xlsx'),
+      downloadName: 'workbook.xlsx' as const,
       filename: 'credit-vivo-desktop-scanner-output.xlsx',
       primary: true,
     },
@@ -114,18 +110,21 @@ export default function Findings() {
       label: 'Download errors worksheet',
       detail: 'CSV opens in Excel and shows each scanner review point.',
       href: getScannerOutputDownloadUrl(result.job_id, 'issues.csv'),
+      downloadName: 'issues.csv' as const,
       filename: 'credit-vivo-errors-worksheet.csv',
     },
     {
       label: 'Download tradelines',
       detail: 'CSV list of accounts and report details found by the scanner.',
       href: getScannerOutputDownloadUrl(result.job_id, 'tradelines.csv'),
+      downloadName: 'tradelines.csv' as const,
       filename: 'credit-vivo-tradelines.csv',
     },
     {
       label: 'Download draft letters',
       detail: 'Plain-text packet of draft dispute letters for review.',
       href: getScannerOutputDownloadUrl(result.job_id, 'letters.txt'),
+      downloadName: 'letters.txt' as const,
       filename: 'credit-vivo-draft-dispute-letters.txt',
     },
   ];
@@ -196,7 +195,7 @@ export default function Findings() {
               <button
                 key={download.label}
                 type="button"
-                onClick={() => void downloadScannerFile(download.href, download.filename)}
+                onClick={() => void downloadScannerFile(download.downloadName, download.filename)}
                 className={`rounded-lg p-4 border text-left transition ${
                   download.primary
                     ? 'border-sky-200 bg-sky-50/70 hover:border-sky-300 hover:bg-sky-50'

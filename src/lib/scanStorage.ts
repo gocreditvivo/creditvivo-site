@@ -197,8 +197,6 @@ export function getDemoScanResult(): ScannerParseResult {
         confidence: 'medium',
         confidence_score: 0.64,
         needs_admin_review: true,
-        raw_block:
-          'MIDLAND CREDIT MANAGEMENT Account Type: Collection Balance: $1,234 Original Creditor: Capital One Remarks: Account placed for collection',
       },
       {
         id: 'demo_2',
@@ -212,8 +210,6 @@ export function getDemoScanResult(): ScannerParseResult {
         confidence: 'medium',
         confidence_score: 0.67,
         needs_admin_review: true,
-        raw_block:
-          'CAPITAL ONE Account Type: Credit Card Balance: $0 Status: Charge-off transferred or sold Date of First Delinquency: 10/01/2020',
       },
     ],
     issues_preview: [

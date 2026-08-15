@@ -34,7 +34,6 @@ export type ScannerReviewItem = {
   estimated_removal_date?: string;
   remarks?: string;
   payment_history_summary?: string;
-  raw_block?: string;
   page_start?: number;
   confidence?: 'high' | 'medium' | 'low';
   confidence_score?: number;
@@ -145,6 +144,26 @@ export function getScannerOutputDownloadUrl(
   return `${SCANNER_API_URL}/api/scanner/result/${encodeURIComponent(jobId)}/download/${downloadName}`;
 }
 
+async function scannerAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabase) throw new Error('Secure sign-in is not configured.');
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error('Your secure session could not be verified.');
+  const accessToken = data.session?.access_token;
+  if (!accessToken) throw new Error('Please sign in before using the scanner.');
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
+export async function downloadScannerOutput(
+  jobId: string,
+  downloadName: 'workbook.xlsx' | 'issues.csv' | 'tradelines.csv' | 'letters.txt'
+): Promise<Blob> {
+  const url = getScannerOutputDownloadUrl(jobId, downloadName);
+  if (!url) throw new Error('This scanner output is not available.');
+  const response = await fetch(url, { headers: await scannerAuthHeaders() });
+  if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+  return response.blob();
+}
+
 export async function parseCreditReports(
   files: File[],
   useAiSecondPass = false
@@ -166,6 +185,7 @@ export async function parseCreditReports(
 
   const response = await fetch(`${SCANNER_API_URL}/api/scanner/parse`, {
     method: 'POST',
+    headers: await scannerAuthHeaders(),
     body: form,
   });
 
@@ -182,7 +202,9 @@ export async function getScannerResult(jobId: string): Promise<ScannerParseResul
     throw new Error('The scanner backend is not connected yet.');
   }
 
-  const response = await fetch(`${SCANNER_API_URL}/api/scanner/result/${jobId}`);
+  const response = await fetch(`${SCANNER_API_URL}/api/scanner/result/${jobId}`, {
+    headers: await scannerAuthHeaders(),
+  });
 
   if (!response.ok) {
     const text = await response.text();
@@ -191,3 +213,4 @@ export async function getScannerResult(jobId: string): Promise<ScannerParseResul
 
   return response.json();
 }
+import { supabase } from './supabaseClient';
