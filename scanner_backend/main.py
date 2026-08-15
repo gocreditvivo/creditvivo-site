@@ -191,6 +191,17 @@ def env_int(name: str, default: int) -> int:
         return default
 
 
+def scanner_accepts_uploads() -> bool:
+    """Fail closed on hosted deployments until uploads are explicitly enabled."""
+    configured = os.getenv("SCANNER_ACCEPT_UPLOADS")
+    if configured is not None:
+        return configured.strip().lower() == "true"
+
+    environment = os.getenv("SCANNER_ENVIRONMENT", "local").strip().lower()
+    hosted = bool(os.getenv("VERCEL") or os.getenv("RENDER"))
+    return environment in {"local", "development", "test"} and not hosted
+
+
 def scanner_job_dir(job_id: str) -> Path:
     if not job_id.startswith("scan_") or any(ch in job_id for ch in ("/", "\\", "..")):
         raise HTTPException(status_code=400, detail="Invalid scanner job id.")
@@ -201,7 +212,7 @@ MAX_FILES = env_int("SCANNER_MAX_FILES", 3)
 MAX_FILE_MB = env_int("SCANNER_MAX_FILE_MB", 25)
 MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024
 RETAIN_UPLOADS = os.getenv("SCANNER_RETAIN_UPLOADS", "false").lower() == "true"
-WRITE_RAW_TEXT = os.getenv("SCANNER_WRITE_RAW_TEXT", "true").lower() == "true"
+WRITE_RAW_TEXT = os.getenv("SCANNER_WRITE_RAW_TEXT", "false").lower() == "true"
 ALLOWED_PDF_TYPES = {"application/pdf", "application/x-pdf", "application/octet-stream", "binary/octet-stream"}
 
 app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0")
@@ -253,6 +264,7 @@ def service_status_payload(check_storage: bool = False) -> dict:
         "environment": os.getenv("SCANNER_ENVIRONMENT", "local"),
         "version": "16.0",
         "time_utc": datetime.now(timezone.utc).isoformat(),
+        "accepting_uploads": scanner_accepts_uploads(),
         "checks": checks,
     }
 
@@ -701,6 +713,14 @@ async def parse_uploaded_reports(
     `use_ai_second_pass` is accepted for backwards compatibility but ignored.
     v16 uses Credit Vivo Proprietary Parser Engine only.
     """
+    if not scanner_accepts_uploads():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "scanner_uploads_disabled",
+                "message": "Credit report uploads are temporarily unavailable while secure staging validation is completed.",
+            },
+        )
     scanner_health_payload = require_scanner_health_or_block()
     scanner_access_payload = require_scanner_access_or_block(x_credit_vivo_scanner_token, x_credit_vivo_device_id)
     if len(files) > MAX_FILES:
@@ -1203,3 +1223,4 @@ def download_scanner_output(job_id: str, download_name: str, x_credit_vivo_scann
         return JSONResponse({"ok": False, "error": "Scanner output not found"}, status_code=404)
 
     return FileResponse(path, media_type=media_type, filename=download_filename)
+
