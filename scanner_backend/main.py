@@ -1223,4 +1223,3 @@ def download_scanner_output(job_id: str, download_name: str, x_credit_vivo_scann
         return JSONResponse({"ok": False, "error": "Scanner output not found"}, status_code=404)
 
     return FileResponse(path, media_type=media_type, filename=download_filename)
-
