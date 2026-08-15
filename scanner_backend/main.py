@@ -264,6 +264,20 @@ app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0")
 @app.middleware("http")
 async def protect_internal_and_ingest_routes(request: Request, call_next):
     path = request.url.path
+    if (
+        request.method.upper() == "POST"
+        and path in {"/scanner/parse", "/api/scanner/parse"}
+        and not scanner_accepts_uploads()
+    ):
+        return JSONResponse(
+            {
+                "detail": {
+                    "code": "scanner_uploads_disabled",
+                    "message": "Credit report uploads are temporarily unavailable while secure staging validation is completed.",
+                }
+            },
+            status_code=503,
+        )
     if path.startswith(("/events/", "/api/events/")) and os.getenv("ENABLE_PUBLIC_EVENT_INGEST", "false").lower() != "true":
         return JSONResponse({"error": "not_found"}, status_code=404)
     if path.startswith(("/leads/", "/api/leads/")) and os.getenv("ENABLE_PUBLIC_LEAD_CAPTURE", "false").lower() != "true":
