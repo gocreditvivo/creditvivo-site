@@ -247,3 +247,9 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - Rollback: revert `45abb121` to remove middleware-only hardening; revert `6b4b523f` to remove the emergency upload control. Do not perform either rollback while customer-data use remains unapproved.
 - Corrected access status: an authorized GitHub connector and automatic Vercel previews/deployments were available and used after the earlier CLI/session check. No isolated Supabase staging project or approved Render/Supabase staging credential set is available yet.
 - Current release status: LIVE UPLOAD SAFETY CONTROL PASS / TECHNICAL RC STAGING GATE BLOCKED. The production site is not approved for customer report processing. Next gate is the isolated Supabase/Render/Vercel RC staging environment in `TECHNICAL_RC_STAGING_ACCESS_CHECKLIST.md`.
+
+### Isolated Supabase staging discovery - 2026-08-15
+
+- Read-only discovery found one healthy CreditVivo Supabase project, `gykmlrctdzyzoobsmfqw`, in the `gocreditvivo` organization. It is treated as production and was not queried, migrated, reconfigured, or used for synthetic testing.
+- The CreditVivo project currently has zero development branches. Supabase quoted a new isolated branch at `$0.01344` per hour.
+- Spending remains outside the existing approval. Branch creation, cost confirmation, migration application, and staging tests are stopped pending Tim's explicit approval of that hourly charge. The smallest founder decision is: approve or decline a temporary Supabase staging branch at `$0.01344/hour`, with deletion only after a separate explicit cleanup approval.
