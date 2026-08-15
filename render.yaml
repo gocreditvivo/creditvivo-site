@@ -11,6 +11,8 @@ services:
         value: https://www.creditvivo.com,https://creditvivo.com
       - key: SCANNER_ENVIRONMENT
         value: production
+      - key: SCANNER_ACCEPT_UPLOADS
+        value: false
       - key: SCANNER_MAX_FILES
         value: 3
       - key: SCANNER_MAX_FILE_MB

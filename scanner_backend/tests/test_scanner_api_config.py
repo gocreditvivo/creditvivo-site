@@ -1,14 +1,42 @@
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
-from main import HEALTH_AUDIT_LOG, health, require_scanner_access_or_block, require_scanner_health_or_block, run_pre_scan_health_check, run_scanner_preflight_health_check
+from main import HEALTH_AUDIT_LOG, app, health, require_scanner_access_or_block, require_scanner_health_or_block, run_pre_scan_health_check, run_scanner_preflight_health_check, scanner_accepts_uploads
 
 
-def test_scanner_saves_raw_text_by_default():
+client = TestClient(app)
+
+
+def test_scanner_does_not_save_raw_text_by_default():
     status = health()
 
-    assert status["write_raw_text"] is True
+    assert status["write_raw_text"] is False
     assert status["pdf_text_engine"] == "pypdf"
+
+
+def test_hosted_scanner_uploads_fail_closed_without_explicit_enable(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("SCANNER_ACCEPT_UPLOADS", raising=False)
+
+    assert scanner_accepts_uploads() is False
+    assert health()["accepting_uploads"] is False
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic-report.pdf", b"%PDF-SYNTHETIC", "application/pdf")},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "scanner_uploads_disabled"
+
+
+def test_explicit_enable_is_required_for_hosted_staging(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("SCANNER_ENVIRONMENT", "staging")
+    monkeypatch.setenv("SCANNER_ACCEPT_UPLOADS", "true")
+
+    assert scanner_accepts_uploads() is True
+    assert health()["accepting_uploads"] is True
 
 
 def test_scanner_preflight_health_check_passes_locally():
