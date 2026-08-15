@@ -17,6 +17,7 @@ import json
 import logging
 import hmac
 import asyncio
+import multiprocessing
 import os
 import shutil
 import threading
@@ -737,47 +738,35 @@ def _supabase_service_request(method: str, resource: str, *, json_body=None, que
 
 
 def persist_scan_record(authorization: str, principal: AuthenticatedPrincipal, job_id: str, artifact_sha256: str) -> dict:
-    cases = _supabase_service_request(
+    created = _supabase_service_request(
         "POST",
-        "credit_cases",
-        json_body={"owner_id": principal.user_id, "status": "review"},
-    )
-    if not cases or not cases[0].get("id"):
-        raise HTTPException(status_code=503, detail="Secure case creation failed.")
-    case_id = cases[0]["id"]
-    scans = _supabase_service_request(
-        "POST",
-        "credit_scans",
+        "rpc/create_credit_scan",
         json_body={
-            "case_id": case_id,
-            "owner_id": principal.user_id,
-            "job_id": job_id,
-            "artifact_sha256": artifact_sha256,
-            "scanner_version": "16.0",
+            "p_owner_id": principal.user_id,
+            "p_job_id": job_id,
+            "p_artifact_sha256": artifact_sha256,
+            "p_scanner_version": "16.0",
         },
     )
-    if not scans or not scans[0].get("id"):
-        raise HTTPException(status_code=503, detail="Secure scan persistence failed.")
-    _supabase_service_request(
-        "PATCH",
-        "credit_cases",
-        query=f"?id=eq.{case_id}&owner_id=eq.{principal.user_id}",
-        json_body={"current_scan_id": scans[0]["id"]},
-    )
-    return {"case_id": case_id, "scan_id": scans[0]["id"], "artifact_sha256": artifact_sha256}
+    row = created[0] if isinstance(created, list) and created else created if isinstance(created, dict) else {}
+    if not row.get("case_id") or not row.get("scan_id"):
+        raise HTTPException(status_code=503, detail="Atomic secure scan persistence failed.")
+    return {"case_id": row["case_id"], "scan_id": row["scan_id"], "artifact_sha256": artifact_sha256}
 
 
 def rollback_scan_record(persistence: dict | None, principal: AuthenticatedPrincipal) -> None:
     if not persistence or not persistence.get("case_id"):
         return
-    try:
-        _supabase_service_request(
-            "DELETE",
-            "credit_cases",
-            query=f"?id=eq.{persistence['case_id']}&owner_id=eq.{principal.user_id}",
-        )
-    except HTTPException:
-        logger.exception("Server-only scan record rollback failed")
+    rolled_back = _supabase_service_request(
+        "POST",
+        "rpc/rollback_credit_scan",
+        json_body={"p_case_id": persistence["case_id"], "p_owner_id": principal.user_id},
+    )
+    rollback_ok = rolled_back is True or (
+        isinstance(rolled_back, list) and len(rolled_back) == 1 and rolled_back[0] is True
+    )
+    if not rollback_ok:
+        raise HTTPException(status_code=503, detail="Server-only scan record rollback failed.")
 
 
 def persist_scan_artifacts(
@@ -811,14 +800,18 @@ def persist_scan_artifacts(
         if not uploaded_paths:
             return
         try:
-            requests.delete(
+            response = requests.delete(
                 f"{supabase_url}/storage/v1/object/credit-report-artifacts",
                 headers={**headers, "Content-Type": "application/json"},
                 json={"prefixes": uploaded_paths},
                 timeout=10,
             )
+            if response.status_code < 200 or response.status_code >= 300:
+                logger.error("Secure artifact rollback rejected with status %s", response.status_code)
+                raise HTTPException(status_code=503, detail="Secure artifact rollback failed.")
         except requests.RequestException:
             logger.exception("Secure artifact rollback request failed")
+            raise HTTPException(status_code=503, detail="Secure artifact rollback is unavailable.")
 
     try:
         for kind, path, stored_filename in artifact_files:
@@ -848,7 +841,10 @@ def persist_scan_artifacts(
             raise HTTPException(status_code=503, detail="Required secure scanner artifacts were not created.")
         _supabase_service_request("POST", "scan_artifacts", json_body=rows)
     except (requests.RequestException, HTTPException) as exc:
-        rollback_uploads()
+        try:
+            rollback_uploads()
+        except HTTPException as rollback_exc:
+            raise rollback_exc from exc
         if isinstance(exc, HTTPException):
             raise
         raise HTTPException(status_code=503, detail="Secure artifact storage is unavailable.") from exc
@@ -1044,6 +1040,64 @@ def build_scanner_outputs(report_texts: Dict[str, dict], out_dir: Path, health_p
     return parsed, result_to_dict(parsed), artifact_sha256
 
 
+def _scanner_output_worker(report_texts: Dict[str, dict], out_dir_text: str, health_payload: dict) -> None:
+    """Child-process entrypoint; never returns report data through an IPC buffer."""
+    out_dir = Path(out_dir_text)
+    marker = out_dir / ".scanner-worker.json"
+    try:
+        _parsed, _data, artifact_sha256 = build_scanner_outputs(report_texts, out_dir, health_payload)
+        marker.write_text(json.dumps({"ok": True, "artifact_sha256": artifact_sha256}), encoding="utf-8")
+    except BaseException:
+        marker.write_text(json.dumps({"ok": False}), encoding="utf-8")
+        raise
+
+
+def build_scanner_outputs_with_hard_deadline(
+    report_texts: Dict[str, dict], out_dir: Path, health_payload: dict, timeout_seconds: float
+):
+    """Run parser/export in a killable child process so the wall-clock cap is real."""
+    if timeout_seconds <= 0:
+        raise HTTPException(status_code=504, detail="Scanner processing deadline exceeded.")
+    marker = out_dir / ".scanner-worker.json"
+    marker.unlink(missing_ok=True)
+    context = multiprocessing.get_context("spawn")
+    process = context.Process(
+        target=_scanner_output_worker,
+        args=(report_texts, str(out_dir), health_payload),
+        daemon=True,
+    )
+    started = False
+    try:
+        try:
+            process.start()
+            started = True
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(status_code=503, detail="Isolated scanner worker is unavailable.") from exc
+        process.join(timeout_seconds)
+        if started and process.is_alive():
+            process.terminate()
+            process.join(2)
+            if process.is_alive() and hasattr(process, "kill"):
+                process.kill()
+                process.join(2)
+            raise HTTPException(status_code=504, detail="Scanner processing deadline exceeded.")
+        if process.exitcode != 0 or not marker.exists():
+            raise HTTPException(status_code=500, detail="The report could not be processed safely.")
+        worker_result = json.loads(marker.read_text(encoding="utf-8"))
+        artifact_path = out_dir / "credit_vivo_parser_result.json"
+        if not worker_result.get("ok") or not artifact_path.exists():
+            raise HTTPException(status_code=500, detail="The report could not be processed safely.")
+        artifact_sha256 = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        if not hmac.compare_digest(artifact_sha256, str(worker_result.get("artifact_sha256", ""))):
+            raise HTTPException(status_code=500, detail="Scanner artifact verification failed.")
+        return json.loads(artifact_path.read_text(encoding="utf-8")), artifact_sha256
+    finally:
+        marker.unlink(missing_ok=True)
+        if started and process.is_alive():
+            process.terminate()
+            process.join(2)
+
+
 @app.post("/scanner/parse")
 @app.post("/api/scanner/parse")
 async def parse_uploaded_reports(
@@ -1123,8 +1177,12 @@ async def parse_uploaded_reports(
         if not report_texts:
             raise HTTPException(status_code=400, detail="No valid report files were supplied.")
 
-        parsed, data, artifact_sha256 = await run_in_threadpool(
-            build_scanner_outputs, report_texts, out_dir, scanner_health_payload
+        data, artifact_sha256 = await run_in_threadpool(
+            build_scanner_outputs_with_hard_deadline,
+            report_texts,
+            out_dir,
+            scanner_health_payload,
+            deadline - time.monotonic(),
         )
         enforce_scan_deadline(deadline)
         persistence = await run_in_threadpool(

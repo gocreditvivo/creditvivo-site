@@ -163,10 +163,10 @@ def test_synthetic_pdf_extraction_runs_end_to_end_without_filename_leak(client):
     ])
     response = client.post(
         "/api/scanner/parse",
-        files={"files": ("TIM-9012-3456-7890-private.pdf", content, "application/pdf")},
+        files={"files": ("SYNTHETIC-PERSON-9012-3456-7890-private.pdf", content, "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    assert "TIM-9012-3456-7890-private" not in response.text
+    assert "SYNTHETIC-PERSON-9012-3456-7890-private" not in response.text
     assert response.json()["files"][0]["filename"] == "report_1.pdf"
     assert response.json()["review_items_preview"][0]["account_number_masked"] == "*7890"
 

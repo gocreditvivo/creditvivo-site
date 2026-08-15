@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.credit_scans (
 ALTER TABLE public.credit_cases ADD COLUMN IF NOT EXISTS current_scan_id UUID;
 ALTER TABLE public.credit_cases DROP CONSTRAINT IF EXISTS credit_cases_current_scan_id_fkey;
 ALTER TABLE public.credit_cases ADD CONSTRAINT credit_cases_current_scan_id_fkey
-    FOREIGN KEY (current_scan_id) REFERENCES public.credit_scans(id) ON DELETE RESTRICT;
+    FOREIGN KEY (current_scan_id) REFERENCES public.credit_scans(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public.customer_approvals (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -88,6 +88,41 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_active_approval_per_scope
     ON public.customer_approvals (case_id, scan_id, approval_scope)
     WHERE revoked_at IS NULL;
 
+CREATE OR REPLACE FUNCTION public.create_credit_scan(
+    p_owner_id UUID, p_job_id TEXT, p_artifact_sha256 TEXT, p_scanner_version TEXT
+) RETURNS TABLE(case_id UUID, scan_id UUID)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    new_case_id UUID;
+    new_scan_id UUID;
+BEGIN
+    IF p_job_id IS NULL OR p_job_id = '' OR p_artifact_sha256 !~ '^[a-f0-9]{64}$' THEN
+        RAISE EXCEPTION 'invalid scan persistence input';
+    END IF;
+    INSERT INTO public.credit_cases (owner_id, status)
+    VALUES (p_owner_id, 'review') RETURNING id INTO new_case_id;
+    INSERT INTO public.credit_scans (case_id, owner_id, job_id, artifact_sha256, scanner_version)
+    VALUES (new_case_id, p_owner_id, p_job_id, lower(p_artifact_sha256), p_scanner_version)
+    RETURNING id INTO new_scan_id;
+    UPDATE public.credit_cases SET current_scan_id = new_scan_id WHERE id = new_case_id;
+    RETURN QUERY SELECT new_case_id, new_scan_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.rollback_credit_scan(p_case_id UUID, p_owner_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    UPDATE public.credit_cases SET current_scan_id = NULL
+    WHERE id = p_case_id AND owner_id = p_owner_id;
+    DELETE FROM public.credit_cases WHERE id = p_case_id AND owner_id = p_owner_id;
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count = 1;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.record_credit_approval(
     p_case_id UUID, p_scan_id UUID, p_artifact_sha256 TEXT, p_approval_scope TEXT
 ) RETURNS public.customer_approvals
@@ -127,8 +162,11 @@ DECLARE
     required_scope TEXT;
     trusted_role TEXT;
 BEGIN
+    trusted_role := coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '');
     SELECT * INTO current_case FROM public.credit_cases
-    WHERE id = p_case_id AND owner_id = auth.uid() FOR UPDATE;
+    WHERE id = p_case_id AND (
+        owner_id = auth.uid() OR (p_status = 'sent' AND trusted_role IN ('founder', 'admin'))
+    ) FOR UPDATE;
     IF current_case.id IS NULL THEN RAISE EXCEPTION 'case not found'; END IF;
     IF NOT (
         (current_case.status = 'draft' AND p_status = 'review') OR
@@ -143,19 +181,19 @@ BEGIN
             SELECT 1 FROM public.customer_approvals a
             JOIN public.credit_scans s ON s.id = current_case.current_scan_id
             WHERE a.case_id = current_case.id AND a.scan_id = current_case.current_scan_id
-              AND a.owner_id = auth.uid() AND a.approval_scope = required_scope
+              AND a.owner_id = current_case.owner_id AND a.approval_scope = required_scope
               AND a.revoked_at IS NULL AND a.artifact_sha256 = s.artifact_sha256
         ) THEN RAISE EXCEPTION 'matching current-artifact approval required'; END IF;
     END IF;
     IF p_status = 'sent' THEN
-        trusted_role := coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '');
         IF trusted_role NOT IN ('founder', 'admin') THEN RAISE EXCEPTION 'admin review required'; END IF;
     END IF;
     UPDATE public.credit_cases SET status = p_status, updated_at = now()
     WHERE id = current_case.id RETURNING * INTO updated_case;
     INSERT INTO public.case_audit_events (case_id, owner_id, event_type, event_payload)
-    VALUES (current_case.id, auth.uid(), 'case_status_changed',
-        jsonb_build_object('from', current_case.status, 'to', p_status, 'scan_id', current_case.current_scan_id));
+    VALUES (current_case.id, current_case.owner_id, 'case_status_changed',
+        jsonb_build_object('from', current_case.status, 'to', p_status,
+            'scan_id', current_case.current_scan_id, 'actor_id', auth.uid()));
     RETURN updated_case;
 END;
 $$;
@@ -181,9 +219,13 @@ $$;
 REVOKE ALL ON FUNCTION public.record_credit_approval(UUID, UUID, TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.transition_credit_case(UUID, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.revoke_credit_approval(UUID, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_credit_scan(UUID, TEXT, TEXT, TEXT) FROM PUBLIC, authenticated;
+REVOKE ALL ON FUNCTION public.rollback_credit_scan(UUID, UUID) FROM PUBLIC, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_credit_approval(UUID, UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.transition_credit_case(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.revoke_credit_approval(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_credit_scan(UUID, TEXT, TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.rollback_credit_scan(UUID, UUID) TO service_role;
 
 -- Customer artifacts live in a private bucket and must begin with auth.uid().
 INSERT INTO storage.buckets (id, name, public)

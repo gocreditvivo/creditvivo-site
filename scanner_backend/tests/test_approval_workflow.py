@@ -98,3 +98,9 @@ def test_migration_denies_direct_writes_and_binds_atomic_transition_to_current_s
     assert 'revoke_credit_approval' in migration
     assert "'customer_approval_revoked'" in migration
     assert 'SECURITY DEFINER' in migration
+    assert "owner_id = auth.uid() OR (p_status = 'sent' AND trusted_role IN ('founder', 'admin'))" in migration
+    assert 'a.owner_id = current_case.owner_id' in migration
+    assert "'actor_id', auth.uid()" in migration
+    assert 'create_credit_scan' in migration
+    assert 'rollback_credit_scan' in migration
+    assert 'ON DELETE SET NULL' in migration

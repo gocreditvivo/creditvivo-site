@@ -47,6 +47,9 @@ scanner_backend/ti/
 scanner_backend/**/node-compile-cache/
 scanner_backend/**/node-jiti/
 work/pytest-tmp/
+.codex-build-temp/
+.rc-python-deps/
+pytest-of-*/
 _backup_before_creditvivo_full_mvp/
 .vercel
 .env*
