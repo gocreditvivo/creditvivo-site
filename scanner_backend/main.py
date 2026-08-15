@@ -218,6 +218,17 @@ def env_int(name: str, default: int) -> int:
         return default
 
 
+def scanner_accepts_uploads() -> bool:
+    """Fail closed on hosted deployments until uploads are explicitly enabled."""
+    configured = os.getenv("SCANNER_ACCEPT_UPLOADS")
+    if configured is not None:
+        return configured.strip().lower() == "true"
+
+    environment = os.getenv("SCANNER_ENVIRONMENT", "local").strip().lower()
+    hosted = bool(os.getenv("VERCEL") or os.getenv("RENDER"))
+    return environment in {"local", "development", "test"} and not hosted
+
+
 def _owner_partition(principal: AuthenticatedPrincipal) -> Path:
     tenant_key = hashlib.sha256(principal.tenant_id.encode("utf-8")).hexdigest()[:20]
     user_key = hashlib.sha256(principal.user_id.encode("utf-8")).hexdigest()[:20]
@@ -317,6 +328,7 @@ def service_status_payload(check_storage: bool = False) -> dict:
         "environment": os.getenv("SCANNER_ENVIRONMENT", "local"),
         "version": "16.0",
         "time_utc": datetime.now(timezone.utc).isoformat(),
+        "accepting_uploads": scanner_accepts_uploads(),
         "checks": checks,
     }
 
@@ -1144,6 +1156,14 @@ async def parse_uploaded_reports(
     `use_ai_second_pass` is accepted for backwards compatibility but ignored.
     v16 uses Credit Vivo Proprietary Parser Engine only.
     """
+    if not scanner_accepts_uploads():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "scanner_uploads_disabled",
+                "message": "Credit report uploads are temporarily unavailable while secure staging validation is completed.",
+            },
+        )
     scanner_health_payload = require_scanner_health_or_block()
     principal = authenticate_scanner_request(authorization)
     scanner_access_payload = {"ok": True, "mode": "authenticated_owner_bound"}

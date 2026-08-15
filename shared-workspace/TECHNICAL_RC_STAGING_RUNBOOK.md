@@ -5,6 +5,7 @@ This runbook is staging-only. It does not authorize a production deployment or t
 ## Required staging configuration
 
 - `SCANNER_ENVIRONMENT=staging`
+- `SCANNER_ACCEPT_UPLOADS=true` only for the isolated staging service after the migration is applied; leave it false everywhere else until the gate begins
 - `SCANNER_WRITE_RAW_TEXT=false`
 - `SCANNER_RETAIN_UPLOADS=false`
 - `SCANNER_RETAIN_OUTPUTS=false`
@@ -21,13 +22,14 @@ Apply `supabase/migrations/20260815070000_technical_rc_security_and_workflow.sql
 ## Release smoke check
 
 1. Confirm `/livez` returns 200 and `/readyz` returns 200.
-2. Confirm an unsigned scanner request returns 401.
-3. With two synthetic staging users, upload the same golden TXT report as user A.
-4. Confirm user A can retrieve the summary and each export.
-5. Confirm user B receives 404 for user A's job id and cannot list the object path through Supabase.
-6. Confirm the persisted JSON, CSV, workbook and browser storage contain no raw account number, SSN, DOB, `raw_block`, or `raw_value`.
-7. Confirm a mismatched artifact hash cannot be approved.
-8. Confirm a normal member cannot mark a case sent, and no endpoint sends mail or disputes.
+2. Confirm both responses report `accepting_uploads=true`; if false, stop and correct only the isolated staging configuration.
+3. Confirm an unsigned scanner request returns 401.
+4. With two synthetic staging users, upload the same golden TXT report as user A.
+5. Confirm user A can retrieve the summary and each export.
+6. Confirm user B receives 404 for user A's job id and cannot list the object path through Supabase.
+7. Confirm the persisted JSON, CSV, workbook and browser storage contain no raw account number, SSN, DOB, `raw_block`, or `raw_value`.
+8. Confirm a mismatched artifact hash cannot be approved.
+9. Confirm a normal member cannot mark a case sent, and no endpoint sends mail or disputes.
 
 ## Monitoring and alert thresholds
 
