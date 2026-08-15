@@ -389,7 +389,9 @@ def parse_credit_reports(text_by_bureau: Dict[str, str]) -> Dict:
         bureaus = sorted({i.bureau for i in group_items})
         if len(bureaus) >= 2:
             bureau_match_notes.append({
-                "group": group_key,
+                # Never expose the normalized matching key. It can compact a
+                # separated account/reference number into a clear identifier.
+                "group": f"match_{hashlib.sha256(group_key.encode('utf-8')).hexdigest()[:16]}",
                 "bureaus": bureaus,
                 "account_names": sorted({i.account_name for i in group_items}),
                 "review_note": "Same or similar item appears across multiple bureaus. Compare balances, dates, status, and remarks."

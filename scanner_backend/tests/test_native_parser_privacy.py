@@ -15,4 +15,7 @@ Status: Collection
     result = parse_credit_reports({"Experian": report, "Equifax": report.replace("Experian", "Equifax")})
     serialized = json.dumps(result)
     assert separated_identifier not in serialized
+    assert separated_identifier.replace("-", "") not in serialized
+    assert f"syntheticref{separated_identifier.replace('-', '')}" not in serialized.lower()
     assert "1234567890" not in serialized
+    assert result["bureau_match_notes"][0]["group"].startswith("match_")
