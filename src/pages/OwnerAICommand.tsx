@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { authenticatedFetch } from '../lib/authenticatedFetch';
 import {
   Activity,
   AlertTriangle,
@@ -212,7 +213,7 @@ const fallbackData: DashboardData = {
 };
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await authenticatedFetch(url);
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
   return response.json() as Promise<T>;
 }
@@ -280,7 +281,7 @@ export default function OwnerAICommand() {
     setSearchResult(null);
 
     try {
-      const response = await fetch('/api/growth-ai/forensic-search/run', {
+      const response = await authenticatedFetch('/api/growth-ai/forensic-search/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

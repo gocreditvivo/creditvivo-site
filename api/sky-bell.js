@@ -20,6 +20,9 @@ import { timingSafeEqual } from 'node:crypto';
 
 const CONNECTOR_ID = 'api.perplexity.ai/sky-bell';
 const SKY_BELL_BASE_URL = process.env.SKY_BELL_BASE_URL || 'https://api.perplexity.ai/sky-bell';
+const MAX_REQUEST_BYTES = 32 * 1024;
+const MAX_RESPONSE_BYTES = 1024 * 1024;
+const UPSTREAM_TIMEOUT_MS = 8000;
 
 export default async function handler(req, res) {
   if (process.env.ENABLE_SKY_BELL_PROXY !== 'true') {
@@ -40,6 +43,11 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'object' && req.body !== null ? req.body : {};
+  const declaredLength = Number(req.headers['content-length'] || 0);
+  if (declaredLength > MAX_REQUEST_BYTES || Buffer.byteLength(JSON.stringify(body)) > MAX_REQUEST_BYTES) {
+    res.status(413).json({ error: 'request_too_large' });
+    return;
+  }
   const targetPath = typeof body.path === 'string' && body.path.length > 0 ? body.path : '/';
   const upstreamMethod = typeof body.method === 'string' ? body.method.toUpperCase() : 'GET';
   const payload = body.payload;
@@ -73,6 +81,8 @@ export default async function handler(req, res) {
   const url = `${SKY_BELL_BASE_URL}${targetPath.startsWith('/') ? targetPath : `/${targetPath}`}`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
     const upstreamResponse = await fetch(url, {
       method: upstreamMethod,
       headers: {
@@ -82,14 +92,25 @@ export default async function handler(req, res) {
       body: ['GET', 'HEAD'].includes(upstreamMethod) || payload === undefined
         ? undefined
         : JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
-    const text = await upstreamResponse.text();
+    const responseLength = Number(upstreamResponse.headers.get('content-length') || 0);
+    if (responseLength > MAX_RESPONSE_BYTES) {
+      res.status(502).json({ error: 'upstream_response_too_large' });
+      return;
+    }
+    const responseBody = Buffer.from(await upstreamResponse.arrayBuffer());
+    if (responseBody.byteLength > MAX_RESPONSE_BYTES) {
+      res.status(502).json({ error: 'upstream_response_too_large' });
+      return;
+    }
 
     res.status(upstreamResponse.status);
     res.setHeader('Content-Type', contentType);
-    res.send(text);
+    res.send(responseBody);
   } catch (error) {
     console.error('[sky-bell] upstream request failed:', error);
     res.status(502).json({

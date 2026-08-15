@@ -16,8 +16,11 @@ Uses:
 import json
 import logging
 import hmac
+import asyncio
 import os
 import shutil
+import threading
+import time
 import uuid
 import hashlib
 from datetime import datetime, timezone
@@ -33,6 +36,7 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 try:
     from pypdf import PdfReader
@@ -156,12 +160,10 @@ SCAN_DOWNLOADS = {
 
 HEALTH_CHECK_VERSION = "scanner-preflight-2026.07.03-v1"
 SAFE_MODE_READY_MESSAGE = "Safe Mode ready. Scanner can pause customer-facing findings, letters, and exports if health fails."
-SCANNER_ACCESS_TOKEN = os.getenv("SCANNER_ACCESS_TOKEN", "")
 ENABLE_EXTERNAL_LICENSE_LOOKUP = os.getenv("ENABLE_EXTERNAL_LICENSE_LOOKUP", "false").lower() == "true"
 ENABLE_AI_SECOND_PASS = os.getenv("ENABLE_AI_SECOND_PASS", "false").lower() == "true"
 ENABLE_AUTO_SEND = os.getenv("ENABLE_AUTO_SEND", "false").lower() == "true"
 ENABLE_REMOTE_SYNC = os.getenv("ENABLE_REMOTE_SYNC", "false").lower() == "true"
-ENCRYPTED_VAULT_ENABLED = os.getenv("ENCRYPTED_VAULT_ENABLED", "true").lower() == "true"
 
 
 @dataclass
@@ -232,11 +234,17 @@ MAX_FILE_MB = env_int("SCANNER_MAX_FILE_MB", 25)
 MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024
 MAX_PDF_PAGES = env_int("SCANNER_MAX_PDF_PAGES", 200)
 MAX_EXTRACTED_CHARS = env_int("SCANNER_MAX_EXTRACTED_CHARS", 2_000_000)
+MAX_CONCURRENT_SCANS = env_int("SCANNER_MAX_CONCURRENT", 2)
+MAX_SCANS_PER_USER_MINUTE = env_int("SCANNER_MAX_SCANS_PER_USER_MINUTE", 5)
+SCAN_REQUEST_DEADLINE_SECONDS = env_int("SCANNER_REQUEST_DEADLINE_SECONDS", 50)
 RETAIN_UPLOADS = os.getenv("SCANNER_RETAIN_UPLOADS", "false").lower() == "true"
 RETAIN_OUTPUTS = os.getenv("SCANNER_RETAIN_OUTPUTS", "false").lower() == "true"
 WRITE_RAW_TEXT = os.getenv("SCANNER_WRITE_RAW_TEXT", "false").lower() == "true"
 ALLOWED_PDF_TYPES = {"application/pdf", "application/x-pdf", "application/octet-stream", "binary/octet-stream"}
 ALLOWED_TEXT_TYPES = {"text/plain", "application/octet-stream", "binary/octet-stream"}
+SCAN_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_SCANS)
+SCAN_RATE_BUCKETS: Dict[str, List[float]] = {}
+SCAN_RATE_LOCK = threading.Lock()
 
 app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0")
 
@@ -386,7 +394,12 @@ def run_pre_scan_health_check(product_mode: str = "credit_vivo_private", user_co
     user_context = user_context or {}
     config = config or {}
     environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
-    production = environment == "production"
+    remote_environment = environment in {"production", "staging", "preview"}
+    auth_configured = bool(
+        os.getenv("SUPABASE_URL")
+        and (os.getenv("SUPABASE_PUBLISHABLE_KEY") or os.getenv("SUPABASE_ANON_KEY"))
+        and os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    )
     log_health_audit("pre_scan_health_check_started", {
         "scan_allowed": False,
         "safe_mode_enabled": True,
@@ -421,34 +434,20 @@ def run_pre_scan_health_check(product_mode: str = "credit_vivo_private", user_co
     ai_second_pass = os.getenv("ENABLE_AI_SECOND_PASS", str(ENABLE_AI_SECOND_PASS)).lower() == "true"
     auto_send = os.getenv("ENABLE_AUTO_SEND", str(ENABLE_AUTO_SEND)).lower() == "true"
     remote_sync = os.getenv("ENABLE_REMOTE_SYNC", str(ENABLE_REMOTE_SYNC)).lower() == "true"
-    encrypted_vault = os.getenv("ENCRYPTED_VAULT_ENABLED", str(ENCRYPTED_VAULT_ENABLED)).lower() == "true"
     checks.append(_health_check_row(
         "HC-003",
         "Security Config Check",
-        (not auto_send) and (not remote_sync) and (not external_license_lookup) and (not ai_second_pass) and encrypted_vault and ((not production) or (not WRITE_RAW_TEXT and not RETAIN_UPLOADS)),
-        f"environment={environment}; write_raw_text={WRITE_RAW_TEXT}; retain_uploads={RETAIN_UPLOADS}; auto_send={auto_send}; remote_sync={remote_sync}; external_lookup={external_license_lookup}; ai_second_pass={ai_second_pass}; encrypted_vault={encrypted_vault}",
+        (not auto_send) and (not remote_sync) and (not external_license_lookup) and (not ai_second_pass) and ((not remote_environment) or (auth_configured and not WRITE_RAW_TEXT and not RETAIN_UPLOADS and not RETAIN_OUTPUTS)),
+        f"environment={environment}; write_raw_text={WRITE_RAW_TEXT}; retain_uploads={RETAIN_UPLOADS}; retain_outputs={RETAIN_OUTPUTS}; auto_send={auto_send}; remote_sync={remote_sync}; external_lookup={external_license_lookup}; ai_second_pass={ai_second_pass}; private_storage_configured={auth_configured}",
         fix_required="Disable auto-send, remote sync, external calls, raw text logging, and upload retention unless explicitly approved.",
     ))
-    scanner_token = str(user_context.get("scanner_token") or config.get("scanner_token") or "")
-    device_id = str(user_context.get("device_id") or config.get("device_id") or "")
-    role = str(user_context.get("role") or config.get("role") or "admin")
-    license_valid = bool(user_context.get("license_valid", config.get("license_valid", True)))
-    access_ok = (
-        (not production)
-        or (
-            bool(os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN))
-            and scanner_token == os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN)
-            and bool(device_id.strip())
-            and role in {"owner", "admin", "scanner_admin"}
-            and license_valid
-        )
-    )
+    access_ok = (not remote_environment) or auth_configured
     checks.append(_health_check_row(
         "HC-004",
         "User / License / Access Check",
         access_ok,
-        f"role={role}; device_present={bool(device_id.strip())}; license_valid={license_valid}; production={production}",
-        fix_required="Verify authorized admin session, scanner token, trusted device, valid license, and scan permission.",
+        f"remote_environment={remote_environment}; supabase_auth_and_service_configured={auth_configured}",
+        fix_required="Configure Supabase URL, publishable key, and server-only service role key.",
     ))
 
     try:
@@ -459,14 +458,14 @@ def run_pre_scan_health_check(product_mode: str = "credit_vivo_private", user_co
         probe.unlink(missing_ok=True)
         secure_temp = str(UPLOADS.resolve()).startswith(str(STORAGE_ROOT.resolve()))
         temp_cleanup_ok = True
-        storage_ok = encrypted_vault and secure_temp and temp_cleanup_ok
-        storage_detail = f"vault_writable=True; encrypted_vault={encrypted_vault}; secure_temp={secure_temp}; temp_cleanup={temp_cleanup_ok}"
+        storage_ok = secure_temp and temp_cleanup_ok and ((not remote_environment) or auth_configured)
+        storage_detail = f"temporary_storage_writable=True; secure_temp={secure_temp}; temp_cleanup={temp_cleanup_ok}; private_storage_configured={auth_configured}"
     except Exception as exc:
         storage_ok = False
         storage_detail = str(exc)
     checks.append(_health_check_row("HC-005", "Vault / Storage Check", storage_ok, storage_detail, fix_required="Unlock/configure encrypted storage, secure temp folder, cleanup, and write permissions."))
 
-    redaction_ok = callable(redact_ssn) and callable(redact_dob) and callable(mask_account_number) and callable(redact_sensitive_log_value) and ((not production) or not WRITE_RAW_TEXT)
+    redaction_ok = callable(redact_ssn) and callable(redact_dob) and callable(mask_account_number) and callable(redact_sensitive_log_value) and ((not remote_environment) or not WRITE_RAW_TEXT)
     checks.append(_health_check_row(
         "HC-006",
         "Privacy / Redaction Check",
@@ -706,20 +705,49 @@ def _supabase_user_request(method: str, resource: str, authorization: str, *, js
         raise HTTPException(status_code=503, detail="Secure persistence returned an invalid response.") from exc
 
 
+def _supabase_service_request(method: str, resource: str, *, json_body=None, query: str = ""):
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(status_code=503, detail="Server-only persistence is not configured.")
+    try:
+        response = requests.request(
+            method,
+            f"{supabase_url}/rest/v1/{resource}{query}",
+            headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+            json=json_body,
+            timeout=8,
+        )
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=503, detail="Server-only persistence is unavailable.") from exc
+    if response.status_code < 200 or response.status_code >= 300:
+        logger.error("Server-only persistence rejected a %s request with status %s", resource, response.status_code)
+        raise HTTPException(status_code=503, detail="Server-only persistence rejected the request.")
+    if not response.content:
+        return []
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="Server-only persistence returned an invalid response.") from exc
+
+
 def persist_scan_record(authorization: str, principal: AuthenticatedPrincipal, job_id: str, artifact_sha256: str) -> dict:
-    cases = _supabase_user_request(
+    cases = _supabase_service_request(
         "POST",
         "credit_cases",
-        authorization,
         json_body={"owner_id": principal.user_id, "status": "review"},
     )
     if not cases or not cases[0].get("id"):
         raise HTTPException(status_code=503, detail="Secure case creation failed.")
     case_id = cases[0]["id"]
-    scans = _supabase_user_request(
+    scans = _supabase_service_request(
         "POST",
         "credit_scans",
-        authorization,
         json_body={
             "case_id": case_id,
             "owner_id": principal.user_id,
@@ -730,7 +758,26 @@ def persist_scan_record(authorization: str, principal: AuthenticatedPrincipal, j
     )
     if not scans or not scans[0].get("id"):
         raise HTTPException(status_code=503, detail="Secure scan persistence failed.")
+    _supabase_service_request(
+        "PATCH",
+        "credit_cases",
+        query=f"?id=eq.{case_id}&owner_id=eq.{principal.user_id}",
+        json_body={"current_scan_id": scans[0]["id"]},
+    )
     return {"case_id": case_id, "scan_id": scans[0]["id"], "artifact_sha256": artifact_sha256}
+
+
+def rollback_scan_record(persistence: dict | None, principal: AuthenticatedPrincipal) -> None:
+    if not persistence or not persistence.get("case_id"):
+        return
+    try:
+        _supabase_service_request(
+            "DELETE",
+            "credit_cases",
+            query=f"?id=eq.{persistence['case_id']}&owner_id=eq.{principal.user_id}",
+        )
+    except HTTPException:
+        logger.exception("Server-only scan record rollback failed")
 
 
 def persist_scan_artifacts(
@@ -738,49 +785,73 @@ def persist_scan_artifacts(
     principal: AuthenticatedPrincipal,
     persistence: dict,
     out_dir: Path,
+    job_dir: Path,
 ) -> None:
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
-    supabase_key = os.getenv("SUPABASE_PUBLISHABLE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
-    if not supabase_url or not supabase_key:
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
         raise HTTPException(status_code=503, detail="Secure artifact storage is not configured.")
-    headers = {"apikey": supabase_key, "Authorization": authorization, "x-upsert": "false"}
-    artifact_files = {
-        "summary": "scan_result_summary.json",
-        "full_result": "credit_vivo_parser_result.json",
-        "workbook": "credit_vivo_desktop_scanner_output.xlsx",
-        "issues_csv": "review_issues.csv",
-        "tradelines_csv": "tradelines.csv",
-        "letters": "draft_dispute_letters.txt",
-    }
+    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}", "x-upsert": "false"}
+    artifact_files = [
+        ("summary", out_dir / "scan_result_summary.json", "scan_result_summary.json"),
+        ("full_result", out_dir / "credit_vivo_parser_result.json", "credit_vivo_parser_result.json"),
+        ("workbook", out_dir / "credit_vivo_desktop_scanner_output.xlsx", "credit_vivo_desktop_scanner_output.xlsx"),
+        ("issues_csv", out_dir / "review_issues.csv", "review_issues.csv"),
+        ("tradelines_csv", out_dir / "tradelines.csv", "tradelines.csv"),
+        ("letters", out_dir / "draft_dispute_letters.txt", "draft_dispute_letters.txt"),
+    ]
+    artifact_files.extend(
+        (f"source_{index}", source_path, f"source_{index}{source_path.suffix.lower()}")
+        for index, source_path in enumerate(sorted(job_dir.glob("source_*")), start=1)
+    )
     rows = []
-    for kind, filename in artifact_files.items():
-        path = out_dir / filename
-        if not path.exists():
-            continue
-        object_path = f"{principal.user_id}/{persistence['case_id']}/{persistence['scan_id']}/{filename}"
-        upload_headers = {**headers, "Content-Type": "application/octet-stream"}
+    uploaded_paths = []
+
+    def rollback_uploads():
+        if not uploaded_paths:
+            return
         try:
+            requests.delete(
+                f"{supabase_url}/storage/v1/object/credit-report-artifacts",
+                headers={**headers, "Content-Type": "application/json"},
+                json={"prefixes": uploaded_paths},
+                timeout=10,
+            )
+        except requests.RequestException:
+            logger.exception("Secure artifact rollback request failed")
+
+    try:
+        for kind, path, stored_filename in artifact_files:
+            if not path.exists():
+                continue
+            content = path.read_bytes()
+            object_path = f"{principal.user_id}/{persistence['case_id']}/{persistence['scan_id']}/{stored_filename}"
             response = requests.post(
                 f"{supabase_url}/storage/v1/object/credit-report-artifacts/{object_path}",
-                headers=upload_headers,
-                data=path.read_bytes(),
+                headers={**headers, "Content-Type": "application/octet-stream"},
+                data=content,
                 timeout=15,
             )
-        except requests.RequestException as exc:
-            raise HTTPException(status_code=503, detail="Secure artifact storage is unavailable.") from exc
-        if response.status_code < 200 or response.status_code >= 300:
-            logger.error("Secure artifact upload failed with status %s", response.status_code)
-            raise HTTPException(status_code=503, detail="Secure artifact storage rejected the upload.")
-        rows.append({
-            "scan_id": persistence["scan_id"],
-            "owner_id": principal.user_id,
-            "artifact_kind": kind,
-            "object_path": object_path,
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-        })
-    if "summary" not in {row["artifact_kind"] for row in rows} or "full_result" not in {row["artifact_kind"] for row in rows}:
-        raise HTTPException(status_code=503, detail="Required secure scanner artifacts were not created.")
-    _supabase_user_request("POST", "scan_artifacts", authorization, json_body=rows)
+            if response.status_code < 200 or response.status_code >= 300:
+                logger.error("Secure artifact upload failed with status %s", response.status_code)
+                raise HTTPException(status_code=503, detail="Secure artifact storage rejected the upload.")
+            uploaded_paths.append(object_path)
+            rows.append({
+                "scan_id": persistence["scan_id"],
+                "owner_id": principal.user_id,
+                "artifact_kind": kind,
+                "object_path": object_path,
+                "sha256": hashlib.sha256(content).hexdigest(),
+            })
+        kinds = {row["artifact_kind"] for row in rows}
+        if "summary" not in kinds or "full_result" not in kinds or not any(kind.startswith("source_") for kind in kinds):
+            raise HTTPException(status_code=503, detail="Required secure scanner artifacts were not created.")
+        _supabase_service_request("POST", "scan_artifacts", json_body=rows)
+    except (requests.RequestException, HTTPException) as exc:
+        rollback_uploads()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=503, detail="Secure artifact storage is unavailable.") from exc
 
 
 def read_secure_scan_artifact(authorization: str, job_id: str, artifact_kind: str) -> bytes | None:
@@ -815,31 +886,7 @@ def read_secure_scan_artifact(authorization: str, job_id: str, artifact_kind: st
 
 
 def require_scanner_access_or_block(scanner_token: str = "", device_id: str = "") -> dict:
-    environment = os.getenv("SCANNER_ENVIRONMENT", "local").lower()
-    scanner_access_token = os.getenv("SCANNER_ACCESS_TOKEN", SCANNER_ACCESS_TOKEN)
-    if environment != "production":
-        return {"ok": True, "mode": "local_test_access"}
-    if not scanner_access_token:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "ok": False,
-                "blocked": True,
-                "safe_mode": True,
-                "message": "Scanner access control is not configured. No scan, letters, exports, or customer-facing findings are allowed.",
-            },
-        )
-    if scanner_token != scanner_access_token or not device_id.strip():
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "ok": False,
-                "blocked": True,
-                "safe_mode": True,
-                "message": "Scanner access check failed. No scan, letters, exports, or customer-facing findings are allowed.",
-            },
-        )
-    return {"ok": True, "mode": "production_access_verified", "device_id_present": True}
+    raise HTTPException(status_code=410, detail="Legacy shared-token scanner access is disabled. Use authenticated bearer access.")
 
 
 def extract_pdf_text(path: Path) -> tuple[str, int]:
@@ -934,10 +981,10 @@ async def save_report_upload(file: UploadFile, dest: Path) -> int:
     safe_type = (file.content_type or "").lower()
     suffix = dest.suffix.lower()
     if suffix not in {".pdf", ".txt"}:
-        raise HTTPException(status_code=400, detail=f"{file.filename} must be a PDF or TXT report.")
+        raise HTTPException(status_code=400, detail="Uploaded file must be a PDF or TXT report.")
     allowed_types = ALLOWED_PDF_TYPES if suffix == ".pdf" else ALLOWED_TEXT_TYPES
     if safe_type and safe_type not in allowed_types:
-        raise HTTPException(status_code=400, detail=f"{file.filename} has an unsupported content type.")
+        raise HTTPException(status_code=400, detail="Uploaded file has an unsupported content type.")
 
     total = 0
     try:
@@ -950,22 +997,51 @@ async def save_report_upload(file: UploadFile, dest: Path) -> int:
                 if total > MAX_FILE_BYTES:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"{file.filename} is larger than the {MAX_FILE_MB} MB beta upload limit.",
+                        detail=f"Uploaded file is larger than the {MAX_FILE_MB} MB beta upload limit.",
                     )
                 f.write(chunk)
     finally:
         await file.close()
 
     if total == 0:
-        raise HTTPException(status_code=400, detail=f"{file.filename} is empty.")
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     prefix = dest.read_bytes()[:512]
     if suffix == ".pdf" and not prefix.startswith(b"%PDF-"):
-        raise HTTPException(status_code=400, detail=f"{file.filename} is not a valid PDF document.")
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF document.")
     if suffix == ".txt" and b"\x00" in prefix:
-        raise HTTPException(status_code=400, detail=f"{file.filename} contains unsupported binary data.")
+        raise HTTPException(status_code=400, detail="Uploaded file contains unsupported binary data.")
 
     return total
+
+
+async def acquire_scan_capacity(principal: AuthenticatedPrincipal) -> None:
+    now = time.monotonic()
+    key = f"{principal.tenant_id}:{principal.user_id}"
+    with SCAN_RATE_LOCK:
+        recent = [stamp for stamp in SCAN_RATE_BUCKETS.get(key, []) if now - stamp < 60]
+        if len(recent) >= MAX_SCANS_PER_USER_MINUTE:
+            raise HTTPException(status_code=429, detail="Scanner request limit reached. Try again shortly.")
+        SCAN_RATE_BUCKETS[key] = recent
+    try:
+        await asyncio.wait_for(SCAN_SEMAPHORE.acquire(), timeout=1.0)
+    except TimeoutError as exc:
+        raise HTTPException(status_code=429, detail="Scanner is at capacity. Try again shortly.") from exc
+    with SCAN_RATE_LOCK:
+        SCAN_RATE_BUCKETS[key].append(time.monotonic())
+
+
+def enforce_scan_deadline(deadline: float) -> None:
+    if time.monotonic() > deadline:
+        raise HTTPException(status_code=504, detail="Scanner processing deadline exceeded.")
+
+
+def build_scanner_outputs(report_texts: Dict[str, dict], out_dir: Path, health_payload: dict):
+    parsed = parse_reports(report_texts)
+    write_outputs(parsed, out_dir, pre_scan_health_check=health_payload)
+    artifact_path = out_dir / "credit_vivo_parser_result.json"
+    artifact_sha256 = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    return parsed, result_to_dict(parsed), artifact_sha256
 
 
 @app.post("/scanner/parse")
@@ -1000,50 +1076,60 @@ async def parse_uploaded_reports(
     report_texts: Dict[str, dict] = {}
     saved_files = []
     raw_text_files = []
+    capacity_acquired = False
+    deadline = time.monotonic() + SCAN_REQUEST_DEADLINE_SECONDS
+    persistence = None
 
     try:
+        await acquire_scan_capacity(principal)
+        capacity_acquired = True
         for index, file in enumerate(files, start=1):
             original_name = Path(file.filename or f"report_{index}.pdf").name
-            safe_name = f"{index}_{original_name}"
+            original_suffix = Path(original_name).suffix.lower()
+            safe_name = f"source_{index}{original_suffix}"
+            public_name = f"report_{index}{original_suffix}"
             dest = job_dir / safe_name
 
             await save_report_upload(file, dest)
             try:
-                text, pages = extract_report_text(dest)
+                text, pages = await run_in_threadpool(extract_report_text, dest)
             except (ValueError, UnicodeError) as exc:
-                raise HTTPException(status_code=422, detail=f"{original_name}: {exc}") from exc
+                raise HTTPException(status_code=422, detail=f"{public_name}: {exc}") from exc
             except Exception as exc:
-                raise HTTPException(status_code=422, detail=f"{original_name} could not be processed safely.") from exc
+                raise HTTPException(status_code=422, detail=f"{public_name} could not be processed safely.") from exc
 
             bureau = detect_bureau(original_name, text)
-            report_texts[original_name] = {"text": text, "bureau": bureau}
+            source_name = f"{bureau.lower()}_{public_name}" if bureau else public_name
+            report_texts[source_name] = {"text": text, "bureau": bureau}
             if WRITE_RAW_TEXT:
                 raw_text_name = f"{safe_name}_raw_text.txt"
                 (out_dir / raw_text_name).write_text(text, encoding="utf-8", errors="ignore")
                 raw_text_files.append({
                     "filename": raw_text_name,
-                    "source_filename": original_name,
+                    "source_filename": public_name,
                     "bureau": bureau,
                     "pages": pages,
                     "chars": len(text),
                 })
             saved_files.append({
-                "filename": original_name,
+                "filename": public_name,
                 "bureau": bureau,
                 "pages": pages,
                 "chars": len(text),
                 "status": "extracted",
             })
+            enforce_scan_deadline(deadline)
 
         if not report_texts:
             raise HTTPException(status_code=400, detail="No valid report files were supplied.")
 
-        parsed = parse_reports(report_texts)
-        write_outputs(parsed, out_dir, pre_scan_health_check=scanner_health_payload)
-        artifact_path = out_dir / "credit_vivo_parser_result.json"
-        artifact_sha256 = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        persistence = persist_scan_record(authorization, principal, job_id, artifact_sha256)
-        data = result_to_dict(parsed)
+        parsed, data, artifact_sha256 = await run_in_threadpool(
+            build_scanner_outputs, report_texts, out_dir, scanner_health_payload
+        )
+        enforce_scan_deadline(deadline)
+        persistence = await run_in_threadpool(
+            persist_scan_record, authorization, principal, job_id, artifact_sha256
+        )
         data["pre_scan_health_check"] = scanner_health_payload
 
         result = {
@@ -1074,20 +1160,26 @@ async def parse_uploaded_reports(
         }
 
         (out_dir / "scan_result_summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-        persist_scan_artifacts(authorization, principal, persistence, out_dir)
+        enforce_scan_deadline(deadline)
+        await run_in_threadpool(persist_scan_artifacts, authorization, principal, persistence, out_dir, job_dir)
+        enforce_scan_deadline(deadline)
         if not RETAIN_OUTPUTS:
             shutil.rmtree(out_dir, ignore_errors=True)
         return JSONResponse(result)
     except HTTPException:
+        rollback_scan_record(persistence, principal)
         shutil.rmtree(out_dir, ignore_errors=True)
         raise
     except Exception as exc:
         logger.exception("Scanner request failed before a safe response could be produced")
+        rollback_scan_record(persistence, principal)
         shutil.rmtree(out_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="The report could not be processed safely.") from exc
     finally:
         if not RETAIN_UPLOADS:
             shutil.rmtree(job_dir, ignore_errors=True)
+        if capacity_acquired:
+            SCAN_SEMAPHORE.release()
 
 
 @app.get("/api/health")
@@ -1108,45 +1200,26 @@ def approve_case_artifact(
     approval: ApprovalRequest,
     authorization: str = Header(default=""),
 ):
-    principal = authenticate_scanner_request(authorization)
+    authenticate_scanner_request(authorization)
     case_id = _validated_uuid(case_id, "case id")
     scan_id = _validated_uuid(approval.scan_id, "scan id")
     if approval.approval_scope not in {"review_findings", "generate_drafts", "send_dispute"}:
         raise HTTPException(status_code=400, detail="Invalid approval scope.")
     if len(approval.artifact_sha256) != 64 or any(ch not in "0123456789abcdef" for ch in approval.artifact_sha256.lower()):
         raise HTTPException(status_code=400, detail="Invalid artifact hash.")
-    scans = _supabase_user_request(
-        "GET",
-        "credit_scans",
-        authorization,
-        query=f"?id=eq.{scan_id}&case_id=eq.{case_id}&select=id,artifact_sha256",
-    )
-    if not scans or scans[0].get("artifact_sha256") != approval.artifact_sha256.lower():
-        raise HTTPException(status_code=409, detail="Approval does not match the stored scanner artifact.")
     rows = _supabase_user_request(
         "POST",
-        "customer_approvals",
+        "rpc/record_credit_approval",
         authorization,
         json_body={
-            "case_id": case_id,
-            "scan_id": scan_id,
-            "owner_id": principal.user_id,
-            "artifact_sha256": approval.artifact_sha256.lower(),
-            "approval_scope": approval.approval_scope,
+            "p_case_id": case_id,
+            "p_scan_id": scan_id,
+            "p_artifact_sha256": approval.artifact_sha256.lower(),
+            "p_approval_scope": approval.approval_scope,
         },
     )
-    _supabase_user_request(
-        "POST",
-        "case_audit_events",
-        authorization,
-        json_body={
-            "case_id": case_id,
-            "owner_id": principal.user_id,
-            "event_type": "customer_approval_recorded",
-            "event_payload": {"scan_id": scan_id, "scope": approval.approval_scope},
-        },
-    )
-    return JSONResponse({"ok": True, "approval": rows[0] if rows else {}})
+    approval_row = rows[0] if isinstance(rows, list) and rows else rows if isinstance(rows, dict) else {}
+    return JSONResponse({"ok": True, "approval": approval_row})
 
 
 @app.patch("/api/cases/{case_id}/status")
@@ -1155,55 +1228,31 @@ def transition_case_status(
     requested: CaseStatusRequest,
     authorization: str = Header(default=""),
 ):
-    principal = authenticate_scanner_request(authorization)
+    authenticate_scanner_request(authorization)
     case_id = _validated_uuid(case_id, "case id")
-    cases = _supabase_user_request(
-        "GET", "credit_cases", authorization, query=f"?id=eq.{case_id}&select=id,status"
-    )
-    if not cases:
-        raise HTTPException(status_code=404, detail="Case not found.")
-    current = str(cases[0].get("status"))
-    allowed = {
-        "draft": {"review"},
-        "review": {"approved"},
-        "approved": {"sent"},
-        "sent": {"response_received"},
-        "response_received": {"closed"},
-        "closed": set(),
-    }
-    if requested.status not in allowed.get(current, set()):
-        raise HTTPException(status_code=409, detail=f"Invalid case transition: {current} to {requested.status}.")
-    if requested.status in {"approved", "sent"}:
-        scope = "generate_drafts" if requested.status == "approved" else "send_dispute"
-        approvals = _supabase_user_request(
-            "GET",
-            "customer_approvals",
-            authorization,
-            query=f"?case_id=eq.{case_id}&approval_scope=eq.{scope}&revoked_at=is.null&select=id",
-        )
-        if not approvals:
-            raise HTTPException(status_code=409, detail="A matching customer approval is required.")
-    if requested.status == "sent" and principal.role not in {"founder", "admin"}:
-        raise HTTPException(status_code=403, detail="Admin review is required before marking a dispute sent.")
     updated = _supabase_user_request(
-        "PATCH",
-        "credit_cases",
-        authorization,
-        query=f"?id=eq.{case_id}",
-        json_body={"status": requested.status, "updated_at": datetime.now(timezone.utc).isoformat()},
-    )
-    _supabase_user_request(
         "POST",
-        "case_audit_events",
+        "rpc/transition_credit_case",
         authorization,
-        json_body={
-            "case_id": case_id,
-            "owner_id": principal.user_id,
-            "event_type": "case_status_changed",
-            "event_payload": {"from": current, "to": requested.status},
-        },
+        json_body={"p_case_id": case_id, "p_status": requested.status},
     )
-    return JSONResponse({"ok": True, "case": updated[0] if updated else {"id": case_id, "status": requested.status}})
+    case_row = updated[0] if isinstance(updated, list) and updated else updated if isinstance(updated, dict) else {}
+    return JSONResponse({"ok": True, "case": case_row})
+
+
+@app.post("/api/cases/{case_id}/approvals/{approval_id}/revoke")
+def revoke_case_approval(case_id: str, approval_id: str, authorization: str = Header(default="")):
+    authenticate_scanner_request(authorization)
+    case_id = _validated_uuid(case_id, "case id")
+    approval_id = _validated_uuid(approval_id, "approval id")
+    revoked = _supabase_user_request(
+        "POST",
+        "rpc/revoke_credit_approval",
+        authorization,
+        json_body={"p_case_id": case_id, "p_approval_id": approval_id},
+    )
+    approval_row = revoked[0] if isinstance(revoked, list) and revoked else revoked if isinstance(revoked, dict) else {}
+    return JSONResponse({"ok": True, "approval": approval_row})
 
 
 @app.get("/admin/users/setup")

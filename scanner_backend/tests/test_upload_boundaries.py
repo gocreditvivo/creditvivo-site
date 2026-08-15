@@ -6,8 +6,34 @@ import hashlib
 import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 import main
+
+
+def synthetic_text_pdf(lines):
+    buffer = BytesIO()
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    font = DictionaryObject({
+        NameObject("/Type"): NameObject("/Font"),
+        NameObject("/Subtype"): NameObject("/Type1"),
+        NameObject("/BaseFont"): NameObject("/Helvetica"),
+    })
+    font_ref = writer._add_object(font)
+    page[NameObject("/Resources")] = DictionaryObject({
+        NameObject("/Font"): DictionaryObject({NameObject("/F1"): font_ref})
+    })
+    stream = DecodedStreamObject()
+    commands = ["BT /F1 10 Tf 72 720 Td"]
+    for line in lines:
+        safe = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        commands.append(f"({safe}) Tj 0 -14 Td")
+    commands.append("ET")
+    stream.set_data("\n".join(commands).encode("latin-1"))
+    page[NameObject("/Contents")] = writer._add_object(stream)
+    writer.write(buffer)
+    return buffer.getvalue()
 
 
 @pytest.fixture
@@ -23,6 +49,8 @@ def client(tmp_path, monkeypatch):
     main.OUTPUT.mkdir(parents=True)
     monkeypatch.setattr(main, "WRITE_RAW_TEXT", False)
     monkeypatch.setattr(main, "RETAIN_UPLOADS", False)
+    monkeypatch.setattr(main, "MAX_SCANS_PER_USER_MINUTE", 1000)
+    main.SCAN_RATE_BUCKETS.clear()
     monkeypatch.setattr(main, "require_scanner_health_or_block", lambda: {"ok": True, "mode": "synthetic_test"})
     monkeypatch.setattr(
         main,
@@ -122,3 +150,67 @@ def test_encrypted_and_blank_pdfs_are_rejected_and_removed(client):
         )
         assert response.status_code == 422, response.text
         assert remaining_jobs() == []
+
+
+def test_synthetic_pdf_extraction_runs_end_to_end_without_filename_leak(client):
+    content = synthetic_text_pdf([
+        "Experian Credit Report",
+        "SYNTHETIC PDF BANK",
+        "Account Number: 901234567890",
+        "Account Type: Collection",
+        "Balance: $75",
+        "Status: Collection",
+    ])
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("TIM-9012-3456-7890-private.pdf", content, "application/pdf")},
+    )
+    assert response.status_code == 200, response.text
+    assert "TIM-9012-3456-7890-private" not in response.text
+    assert response.json()["files"][0]["filename"] == "report_1.pdf"
+    assert response.json()["review_items_preview"][0]["account_number_masked"] == "*7890"
+
+
+def test_pdf_page_and_extracted_text_limits_fail_closed(client, monkeypatch):
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    writer.add_blank_page(width=72, height=72)
+    pdf_buffer = BytesIO()
+    writer.write(pdf_buffer)
+    monkeypatch.setattr(main, "MAX_PDF_PAGES", 1)
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.pdf", pdf_buffer.getvalue(), "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert remaining_jobs() == []
+
+    monkeypatch.setattr(main, "MAX_EXTRACTED_CHARS", 10)
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", b"Experian synthetic report text", "text/plain")},
+    )
+    assert response.status_code == 422
+    assert remaining_jobs() == []
+
+
+def test_authenticated_user_rate_limit_fails_closed(client, monkeypatch):
+    monkeypatch.setattr(main, "MAX_SCANS_PER_USER_MINUTE", 1)
+    main.SCAN_RATE_BUCKETS.clear()
+    report = b"""Experian Credit Report
+SYNTHETIC BANK
+Account Number: 1234567890
+Account Type: Collection
+Balance: $50
+Status: Collection
+"""
+    first = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", report, "text/plain")},
+    )
+    second = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", report, "text/plain")},
+    )
+    assert first.status_code == 200
+    assert second.status_code == 429

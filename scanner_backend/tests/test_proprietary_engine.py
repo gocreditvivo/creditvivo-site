@@ -1023,6 +1023,7 @@ def test_account_masking_never_exposes_short_or_leading_clear_values():
 
 def test_all_persisted_outputs_redact_raw_account_and_identity_values(tmp_path):
     raw_account = "9876543210123456"
+    separated_account = "9876-5432-1012-3456"
     raw_ssn = "123-45-6789"
     sample = f"""
 --- PAGE 1 ---
@@ -1035,12 +1036,14 @@ Balance: $420
 Status: Collection
 Consumer SSN: {raw_ssn}
 Remarks: =HYPERLINK("https://invalid.test","synthetic")
+Reference: {separated_account}
 """
     result = parse_reports({"synthetic-privacy-report.txt": {"text": sample, "bureau": "Experian"}})
     data = result_to_dict(result)
     payload = json.dumps(data, ensure_ascii=False)
 
     assert raw_account not in payload
+    assert separated_account not in payload
     assert raw_ssn not in payload
     assert data["tradelines"][0]["account_number_masked"] == "*3456"
     assert "raw_block" not in data["tradelines"][0]
@@ -1061,6 +1064,7 @@ Remarks: =HYPERLINK("https://invalid.test","synthetic")
     )
 
     assert raw_account not in persisted_text
+    assert separated_account not in persisted_text
     assert raw_ssn not in persisted_text
     assert raw_account not in workbook_text
     assert raw_ssn not in workbook_text

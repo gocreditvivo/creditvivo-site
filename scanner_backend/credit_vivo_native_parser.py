@@ -395,13 +395,13 @@ def parse_credit_reports(text_by_bureau: Dict[str, str]) -> Dict:
                 "review_note": "Same or similar item appears across multiple bureaus. Compare balances, dates, status, and remarks."
             })
 
-    return {
+    return sanitize_output_payload({
         "engine": "Credit Vivo Native Parser",
         "version": "15.3-no-paid-ai",
         "paid_ai_used": False,
-        "items": [sanitize_output_payload(asdict(x)) for x in all_items],
+        "items": [asdict(x) for x in all_items],
         "item_count": len(all_items),
         "bureau_match_notes": bureau_match_notes,
         "customer_message": "Your Credit Check-In was reviewed. Items are organized for review before any action is sent.",
         "admin_message": "Native parser output is draft review data. Verify raw snippets before preparing letters."
-    }
+    })

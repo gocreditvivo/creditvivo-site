@@ -17,11 +17,23 @@ services:
         value: 25
       - key: SCANNER_RETAIN_UPLOADS
         value: false
+      - key: SCANNER_RETAIN_OUTPUTS
+        value: false
       - key: SCANNER_WRITE_RAW_TEXT
         value: false
+      - key: SCANNER_MAX_CONCURRENT
+        value: 2
+      - key: SCANNER_MAX_SCANS_PER_USER_MINUTE
+        value: 5
+      - key: SCANNER_REQUEST_DEADLINE_SECONDS
+        value: 50
       - key: SCANNER_STORAGE_DIR
         value: /tmp/creditvivo-scanner
       - key: ADMIN_SETUP_TOKEN
         sync: false
-      - key: SCANNER_ACCESS_TOKEN
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false

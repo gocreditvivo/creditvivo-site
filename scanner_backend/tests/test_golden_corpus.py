@@ -21,10 +21,19 @@ def test_golden_fixture_matches_expected_normalized_output(fixture):
 
     # Parser output must be deterministic for the same versioned fixture.
     assert first == second
-    assert len(first["tradelines"]) >= fixture["minimum_tradelines"]
-    assert set(fixture["expected_bureaus"]).issubset({row["bureau"] for row in first["tradelines"]})
-    assert set(fixture["expected_accounts"]).issubset({row["account_number_masked"] for row in first["tradelines"]})
-    assert set(fixture["required_issue_types"]).issubset({row["issue_type"] for row in first["issues"]})
+    projected = [
+        {
+            "bureau": row["bureau"],
+            "account": row["account_number_masked"],
+            "name": row["account_name"],
+            "type": row["account_type"],
+            "status": row["status"],
+            "balance": row["balance"],
+        }
+        for row in first["tradelines"]
+    ]
+    assert projected == fixture["tradelines"]
+    assert sorted(row["issue_type"] for row in first["issues"]) == sorted(fixture["issue_types"])
 
     serialized = json.dumps(first, ensure_ascii=False)
     assert "100000000001" not in serialized

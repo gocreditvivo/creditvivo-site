@@ -155,6 +155,11 @@ def sanitize_sensitive_text(value: str) -> str:
     )
     text = account_pattern.sub(lambda match: match.group(1) + mask_account_number(match.group(2)), text)
 
+    # Catch grouped or separated long identifiers even when no account label is
+    # present (for example, 9876-5432-1012-3456 in a remark).
+    grouped_identifier = re.compile(r"(?<![A-Za-z0-9])(?:\d[ ._-]?){8,}\d(?![A-Za-z0-9])")
+    text = grouped_identifier.sub(lambda match: mask_account_number(match.group(0)), text)
+
     # Long uninterrupted numbers in evidence are identifiers or confirmation
     # values, not amounts/dates. Retain only a last-four reference.
     text = re.sub(r"\b\d{6,}\b", lambda match: "*" + match.group(0)[-4:], text)
@@ -1696,7 +1701,20 @@ def detect_issues(tradelines: List[NormalizedTradeline], groups: List[dict]) -> 
                 t.confidence
             )
 
-        if t.is_negative and not t.date_of_first_delinquency and any(x in blob for x in ["charge", "collection", "delinquent", "past due"]):
+        if t.is_negative and "late_payment" in t.negative_signals:
+            add_issue(
+                issues,
+                "late_payment_review",
+                "medium",
+                "Late payment review",
+                "A reported late payment should be checked against the account history and supporting records.",
+                "Verify the late-payment month, payment history, status, and source evidence before drafting any dispute.",
+                "Round 4 â€” Reporting Accuracy Review",
+                [t],
+                t.confidence,
+            )
+
+        if t.is_negative and not t.date_of_first_delinquency and any(x in blob for x in ["charge", "collection", "delinquent", "past due", "late"]):
             add_issue(
                 issues,
                 "missing_dofd_review",

@@ -55,15 +55,11 @@ def test_scanner_preflight_blocks_when_external_calls_enabled(monkeypatch):
     monkeypatch.delenv("ENABLE_AI_SECOND_PASS", raising=False)
 
 
-def test_production_scanner_access_blocks_without_config(monkeypatch):
-    monkeypatch.setenv("SCANNER_ENVIRONMENT", "production")
-
+def test_legacy_shared_token_scanner_access_is_disabled():
     with pytest.raises(HTTPException) as exc:
         require_scanner_access_or_block("", "")
 
-    assert exc.value.status_code == 503
-    assert exc.value.detail["blocked"] is True
-    assert exc.value.detail["safe_mode"] is True
+    assert exc.value.status_code == 410
 
 
 def test_health_check_fails_if_auto_send_enabled(monkeypatch):

@@ -1,79 +1,21 @@
-import type { ScannerParseResult } from './scannerApi';
+import { getScannerResult, type ScannerParseResult } from './scannerApi';
 import { supabase } from './supabaseClient';
 
-const LAST_SCAN_KEY = 'creditVivoLastScanResult';
-const LAST_SCAN_OWNER_KEY = 'creditVivoLastScanOwner';
 let activeUserId: string | null = null;
+let lastScanResult: ScannerParseResult | null = null;
 
 export function setScanStorageUser(userId: string | null) {
+  if (userId !== activeUserId) lastScanResult = null;
   activeUserId = userId;
-  try {
-    const storedOwner = localStorage.getItem(LAST_SCAN_OWNER_KEY);
-    if (!userId || storedOwner !== userId) {
-      localStorage.removeItem(LAST_SCAN_KEY);
-    }
-    if (userId) localStorage.setItem(LAST_SCAN_OWNER_KEY, userId);
-    else localStorage.removeItem(LAST_SCAN_OWNER_KEY);
-  } catch {
-    // Storage can be unavailable in strict private browsing modes.
-  }
 }
 
 export function saveLastScanResult(result: ScannerParseResult) {
-  try {
-    if (!activeUserId) return;
-    localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
-    localStorage.setItem(LAST_SCAN_OWNER_KEY, activeUserId);
-  } catch {
-    // Storage can be unavailable in strict private browsing modes.
-  }
-  void persistSafeScanSummary(result);
-}
-
-async function persistSafeScanSummary(result: ScannerParseResult) {
-  if (!supabase) return;
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData.user;
-  if (!user) return;
-
-  const { data: scan, error } = await supabase.from('creditvivo_scans').insert({
-    user_id: user.id,
-    mode: result.job_id === 'demo_scan' ? 'demo' : 'scanner',
-    status: 'ready',
-    review_items_count: result.review_items_count ?? 0,
-    issues_count: result.issues_count ?? 0,
-    customer_summary: result.customer_summary ?? {},
-  }).select('id').single();
-  if (error || !scan) return;
-
-  const reviewById = new Map((result.review_items_preview ?? []).map((item) => [item.id, item]));
-  const findings = (result.issues_preview ?? []).map((issue) => {
-    const review = issue.related_tradeline_ids?.length ? reviewById.get(issue.related_tradeline_ids[0]) : undefined;
-    return {
-      scan_id: scan.id,
-      user_id: user.id,
-      finding_key: issue.id,
-      bureau: review?.bureau ?? null,
-      account_name: review?.account_name ?? null,
-      account_number_masked: review?.account_number_masked ?? null,
-      finding_type: issue.issue_type,
-      severity: issue.severity,
-      explanation: issue.customer_explanation,
-      review_status: 'needs_verification',
-    };
-  });
-  if (findings.length) await supabase.from('creditvivo_findings').insert(findings);
+  if (!activeUserId) return;
+  lastScanResult = result;
 }
 
 export function getLastScanResult(): ScannerParseResult | null {
-  try {
-    if (!activeUserId || localStorage.getItem(LAST_SCAN_OWNER_KEY) !== activeUserId) return null;
-    const raw = localStorage.getItem(LAST_SCAN_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as ScannerParseResult;
-  } catch {
-    return null;
-  }
+  return activeUserId ? lastScanResult : null;
 }
 
 export async function restoreLatestScanResult(userId: string): Promise<ScannerParseResult | null> {
@@ -81,75 +23,25 @@ export async function restoreLatestScanResult(userId: string): Promise<ScannerPa
   if (cached || !supabase || !userId) return cached;
 
   const { data: scan, error: scanError } = await supabase
-    .from('creditvivo_scans')
-    .select('id, mode, status, review_items_count, issues_count, customer_summary, created_at')
-    .eq('user_id', userId)
+    .from('credit_scans')
+    .select('job_id, created_at')
+    .eq('owner_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (scanError || !scan) return null;
-
-  const { data: findings, error: findingsError } = await supabase
-    .from('creditvivo_findings')
-    .select('finding_key, bureau, account_name, account_number_masked, finding_type, severity, explanation')
-    .eq('user_id', userId)
-    .eq('scan_id', scan.id)
-    .order('created_at', { ascending: true });
-
-  if (findingsError) return null;
-
-  const restoredFindings = findings ?? [];
-  const reviewItems = restoredFindings.map((finding, index) => ({
-    id: `restored_review_${index + 1}`,
-    bureau: finding.bureau ?? undefined,
-    account_name: finding.account_name ?? undefined,
-    account_number_masked: finding.account_number_masked ?? undefined,
-    needs_admin_review: true,
-  }));
-  const issues = restoredFindings.map((finding, index) => ({
-    id: finding.finding_key || `restored_issue_${index + 1}`,
-    issue_type: finding.finding_type,
-    severity: finding.severity,
-    customer_label: String(finding.finding_type || 'Review point').replace(/_/g, ' '),
-    customer_explanation: finding.explanation,
-    admin_explanation: finding.explanation,
-    suggested_round: 'Review saved finding',
-    related_tradeline_ids: [reviewItems[index].id],
-    confidence: 'medium',
-  }));
-
-  const result: ScannerParseResult = {
-    job_id: `saved_${scan.id}`,
-    files: [],
-    ai_second_pass: false,
-    paid_ai_used: false,
-    status: { mode: scan.mode, message: 'Your latest saved Credit Check-In is ready.' },
-    review_items_count: scan.review_items_count ?? reviewItems.length,
-    issues_count: scan.issues_count ?? issues.length,
-    customer_message: 'Your latest saved Credit Check-In is ready.',
-    customer_summary: scan.customer_summary ?? {},
-    review_items_preview: reviewItems,
-    issues_preview: issues,
-  };
-
   try {
-    localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
-    localStorage.setItem(LAST_SCAN_OWNER_KEY, userId);
+    const result = await getScannerResult(scan.job_id);
+    lastScanResult = result;
+    return result;
   } catch {
-    // The database remains the source of truth if local storage is unavailable.
+    return null;
   }
-
-  return result;
 }
 
 export function clearLastScanResult() {
-  try {
-    localStorage.removeItem(LAST_SCAN_KEY);
-    localStorage.removeItem(LAST_SCAN_OWNER_KEY);
-  } catch {
-    // Storage can be unavailable in strict private browsing modes.
-  }
+  lastScanResult = null;
 }
 
 export function getDemoScanResult(): ScannerParseResult {

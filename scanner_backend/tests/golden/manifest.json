@@ -1,70 +1,75 @@
 {
-  "version": "creditvivo-golden-v1",
+  "version": "creditvivo-golden-v2-exact",
   "synthetic_only": true,
   "fixtures": [
     {
       "name": "experian_collection",
       "files": ["experian_collection.txt"],
-      "expected_bureaus": ["Experian"],
-      "expected_accounts": ["*0001"],
-      "minimum_tradelines": 1,
-      "required_issue_types": ["collection_review"]
+      "tradelines": [
+        {"bureau": "Experian", "account": "*0001", "name": "SYNTHETIC COLLECTION SERVICES", "type": "Collection", "status": "Collection", "balance": "$640"}
+      ],
+      "issue_types": ["collection_review", "missing_dofd_review"]
     },
     {
       "name": "equifax_chargeoff",
       "files": ["equifax_chargeoff.txt"],
-      "expected_bureaus": ["Equifax"],
-      "expected_accounts": ["*0002"],
-      "minimum_tradelines": 1,
-      "required_issue_types": ["chargeoff_review"]
+      "tradelines": [
+        {"bureau": "Equifax", "account": "*0002", "name": "SYNTHETIC CARD BANK", "type": "Credit Card", "status": "Charge-off transferred or sold", "balance": "$0"}
+      ],
+      "issue_types": ["chargeoff_review"]
     },
     {
       "name": "transunion_clean",
       "files": ["transunion_clean.txt"],
-      "expected_bureaus": ["TransUnion"],
-      "expected_accounts": ["*0003"],
-      "minimum_tradelines": 1,
-      "required_issue_types": []
+      "tradelines": [
+        {"bureau": "TransUnion", "account": "*0003", "name": "SYNTHETIC CREDIT UNION", "type": "Installment Loan", "status": "Pays As Agreed", "balance": "$1,200"}
+      ],
+      "issue_types": []
     },
     {
       "name": "three_separate_bureaus",
       "files": ["experian_collection.txt", "equifax_chargeoff.txt", "transunion_clean.txt"],
-      "expected_bureaus": ["Experian", "Equifax", "TransUnion"],
-      "expected_accounts": ["*0001", "*0002", "*0003"],
-      "minimum_tradelines": 3,
-      "required_issue_types": ["collection_review", "chargeoff_review"]
+      "tradelines": [
+        {"bureau": "Experian", "account": "*0001", "name": "SYNTHETIC COLLECTION SERVICES", "type": "Collection", "status": "Collection", "balance": "$640"},
+        {"bureau": "Equifax", "account": "*0002", "name": "SYNTHETIC CARD BANK", "type": "Credit Card", "status": "Charge-off transferred or sold", "balance": "$0"},
+        {"bureau": "TransUnion", "account": "*0003", "name": "SYNTHETIC CREDIT UNION", "type": "Installment Loan", "status": "Pays As Agreed", "balance": "$1,200"}
+      ],
+      "issue_types": ["chargeoff_review", "collection_review", "missing_dofd_review"]
     },
     {
       "name": "combined_three_bureau",
       "files": ["combined_three_bureau.txt"],
-      "expected_bureaus": ["Experian", "Equifax", "TransUnion"],
-      "expected_accounts": ["*0004"],
-      "minimum_tradelines": 3,
-      "required_issue_types": ["chargeoff_review"]
+      "tradelines": [
+        {"bureau": "Experian", "account": "*0004", "name": "SYNTHETIC SHARED BANK", "type": "Credit Card", "status": "Charge-off", "balance": "$500"},
+        {"bureau": "Equifax", "account": "*0004", "name": "SYNTHETIC SHARED BANK", "type": "Credit Card", "status": "Charge-off", "balance": "$725"},
+        {"bureau": "TransUnion", "account": "*0004", "name": "SYNTHETIC SHARED BANK", "type": "Credit Card", "status": "Paid charge-off", "balance": "$500"}
+      ],
+      "issue_types": ["chargeoff_review", "chargeoff_review", "chargeoff_review", "cross_bureau_balance_mismatch", "cross_bureau_date_mismatch", "cross_bureau_status_mismatch"]
     },
     {
       "name": "duplicates_and_transfer",
       "files": ["duplicates_and_transfer.txt"],
-      "expected_bureaus": ["Experian"],
-      "expected_accounts": ["*0005", "*0006"],
-      "minimum_tradelines": 2,
-      "required_issue_types": ["collection_review", "chargeoff_review"]
+      "tradelines": [
+        {"bureau": "Experian", "account": "*0005", "name": "SYNTHETIC ORIGINAL BANK", "type": "Credit Card", "status": "Charge-off transferred or sold", "balance": "$0"},
+        {"bureau": "Experian", "account": "*0006", "name": "SYNTHETIC DEBT BUYER", "type": "Collection", "status": "Collection", "balance": "$950"}
+      ],
+      "issue_types": ["chargeoff_review", "collection_review", "missing_dofd_review"]
     },
     {
       "name": "missing_fields",
       "files": ["missing_fields.txt"],
-      "expected_bureaus": ["Equifax"],
-      "expected_accounts": ["*0007"],
-      "minimum_tradelines": 1,
-      "required_issue_types": ["collection_review"]
+      "tradelines": [
+        {"bureau": "Equifax", "account": "*0007", "name": "SYNTHETIC RECOVERY GROUP", "type": "Collection", "status": "Collection", "balance": "$310"}
+      ],
+      "issue_types": ["collection_review", "missing_dofd_review"]
     },
     {
       "name": "ocr_noise_reordered",
       "files": ["ocr_noise_reordered.txt"],
-      "expected_bureaus": ["TransUnion"],
-      "expected_accounts": ["*0008"],
-      "minimum_tradelines": 1,
-      "required_issue_types": []
+      "tradelines": [
+        {"bureau": "TransUnion", "account": "*0008", "name": "SYNTHETIC NOISE BANK", "type": "Credit Card", "status": "90 days late", "balance": "$88"}
+      ],
+      "issue_types": ["late_payment_review", "missing_dofd_review"]
     }
   ]
 }

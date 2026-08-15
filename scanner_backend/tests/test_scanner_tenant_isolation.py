@@ -23,6 +23,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "WRITE_RAW_TEXT", False)
     monkeypatch.setattr(main, "RETAIN_UPLOADS", False)
     monkeypatch.setattr(main, "RETAIN_OUTPUTS", True)
+    monkeypatch.setattr(main, "MAX_SCANS_PER_USER_MINUTE", 1000)
+    main.SCAN_RATE_BUCKETS.clear()
     monkeypatch.setattr(main, "require_scanner_health_or_block", lambda: {"ok": True, "mode": "synthetic_test"})
 
     principals = {
@@ -100,3 +102,76 @@ def test_synthetic_test_token_requires_valid_hmac(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         main.authenticate_scanner_request("Bearer test.alice.tenant-a.invalid")
     assert exc.value.status_code == 401
+
+
+def test_partial_remote_artifact_upload_is_rolled_back(monkeypatch, tmp_path):
+    out_dir = tmp_path / "out"
+    job_dir = tmp_path / "uploads"
+    out_dir.mkdir()
+    job_dir.mkdir()
+    (out_dir / "scan_result_summary.json").write_text("{}", encoding="utf-8")
+    (out_dir / "credit_vivo_parser_result.json").write_text("{}", encoding="utf-8")
+    (job_dir / "source_1.txt").write_text("synthetic source", encoding="utf-8")
+    monkeypatch.setenv("SUPABASE_URL", "https://synthetic.invalid")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "synthetic-service-key")
+
+    class FakeResponse:
+        def __init__(self, status_code):
+            self.status_code = status_code
+
+    calls = {"post": 0, "deleted": None}
+
+    def fake_post(*_args, **_kwargs):
+        calls["post"] += 1
+        return FakeResponse(200 if calls["post"] == 1 else 500)
+
+    def fake_delete(*_args, **kwargs):
+        calls["deleted"] = kwargs.get("json", {}).get("prefixes")
+        return FakeResponse(200)
+
+    monkeypatch.setattr(main.requests, "post", fake_post)
+    monkeypatch.setattr(main.requests, "delete", fake_delete)
+    with pytest.raises(HTTPException):
+        main.persist_scan_artifacts(
+            "Bearer synthetic",
+            main.AuthenticatedPrincipal("owner", "tenant"),
+            {"case_id": "case", "scan_id": "scan"},
+            out_dir,
+            job_dir,
+        )
+    assert len(calls["deleted"]) == 1
+    assert calls["deleted"][0].endswith("scan_result_summary.json")
+
+
+def test_original_source_bytes_are_retained_privately_with_sha256(monkeypatch, tmp_path):
+    out_dir = tmp_path / "out"
+    job_dir = tmp_path / "uploads"
+    out_dir.mkdir()
+    job_dir.mkdir()
+    (out_dir / "scan_result_summary.json").write_text("{}", encoding="utf-8")
+    (out_dir / "credit_vivo_parser_result.json").write_text("{}", encoding="utf-8")
+    source_bytes = b"synthetic original report bytes"
+    (job_dir / "source_1.txt").write_bytes(source_bytes)
+    monkeypatch.setenv("SUPABASE_URL", "https://synthetic.invalid")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "synthetic-service-key")
+
+    class FakeResponse:
+        status_code = 200
+
+    captured = {}
+    monkeypatch.setattr(main.requests, "post", lambda *_args, **_kwargs: FakeResponse())
+    monkeypatch.setattr(
+        main,
+        "_supabase_service_request",
+        lambda _method, _resource, **kwargs: captured.update({"rows": kwargs["json_body"]}) or [],
+    )
+    main.persist_scan_artifacts(
+        "Bearer synthetic",
+        main.AuthenticatedPrincipal("owner", "tenant"),
+        {"case_id": "case", "scan_id": "scan"},
+        out_dir,
+        job_dir,
+    )
+    source_row = next(row for row in captured["rows"] if row["artifact_kind"] == "source_1")
+    assert source_row["sha256"] == hashlib.sha256(source_bytes).hexdigest()
+    assert source_row["object_path"].startswith("owner/case/scan/source_1")
