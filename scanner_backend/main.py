@@ -23,7 +23,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -216,6 +216,25 @@ WRITE_RAW_TEXT = os.getenv("SCANNER_WRITE_RAW_TEXT", "false").lower() == "true"
 ALLOWED_PDF_TYPES = {"application/pdf", "application/x-pdf", "application/octet-stream", "binary/octet-stream"}
 
 app = FastAPI(title="Credit Vivo Proprietary Scanner API", version="16.0")
+
+@app.middleware("http")
+async def suspend_hosted_scanner_uploads(request: Request, call_next):
+    if (
+        request.method.upper() == "POST"
+        and request.url.path in {"/scanner/parse", "/api/scanner/parse"}
+        and not scanner_accepts_uploads()
+    ):
+        return JSONResponse(
+            {
+                "detail": {
+                    "code": "scanner_uploads_disabled",
+                    "message": "Credit report uploads are temporarily unavailable while secure staging validation is completed.",
+                }
+            },
+            status_code=503,
+        )
+    return await call_next(request)
+
 
 allowed_origins = os.getenv(
     "CREDIT_VIVO_ALLOWED_ORIGINS",
