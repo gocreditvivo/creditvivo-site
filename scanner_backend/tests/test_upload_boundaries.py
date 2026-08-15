@@ -214,3 +214,129 @@ Status: Collection
     )
     assert first.status_code == 200
     assert second.status_code == 429
+
+
+def test_rollback_failure_cannot_skip_local_output_cleanup(client, monkeypatch):
+    report = b"""Experian Credit Report
+SYNTHETIC BANK
+Account Number: 1234567890
+Account Type: Collection
+Balance: $50
+Status: Collection
+"""
+    monkeypatch.setattr(
+        main,
+        "persist_scan_artifacts",
+        lambda *_args: (_ for _ in ()).throw(main.HTTPException(status_code=503, detail="synthetic upload failure")),
+    )
+    monkeypatch.setattr(
+        main,
+        "rollback_scan_record",
+        lambda *_args: (_ for _ in ()).throw(main.HTTPException(status_code=503, detail="synthetic rollback failure")),
+    )
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", report, "text/plain")},
+    )
+    assert response.status_code == 503
+    assert remaining_jobs() == []
+
+
+def test_hard_deadline_terminates_and_kills_a_stuck_worker(tmp_path, monkeypatch):
+    class StuckProcess:
+        def __init__(self):
+            self.exitcode = None
+            self.alive = True
+            self.terminated = False
+            self.killed = False
+
+        def start(self):
+            return None
+
+        def join(self, _timeout=None):
+            return None
+
+        def is_alive(self):
+            return self.alive
+
+        def terminate(self):
+            self.terminated = True
+
+        def kill(self):
+            self.killed = True
+            self.alive = False
+
+    stuck = StuckProcess()
+
+    class FakeContext:
+        def Process(self, **_kwargs):
+            return stuck
+
+    monkeypatch.setattr(main.multiprocessing, "get_context", lambda _method: FakeContext())
+    with pytest.raises(main.HTTPException) as exc:
+        main.build_scanner_outputs_with_hard_deadline({}, tmp_path, {}, 0.001)
+    assert exc.value.status_code == 504
+    assert stuck.terminated is True
+    assert stuck.killed is True
+
+
+def test_capacity_is_released_after_hard_deadline_failure(client, monkeypatch):
+    class TrackingSemaphore:
+        def __init__(self):
+            self.acquired = 0
+            self.released = 0
+
+        async def acquire(self):
+            self.acquired += 1
+            return True
+
+        def release(self):
+            self.released += 1
+
+    tracker = TrackingSemaphore()
+    monkeypatch.setattr(main, "SCAN_SEMAPHORE", tracker)
+    monkeypatch.setattr(
+        main,
+        "build_scanner_outputs_with_hard_deadline",
+        lambda *_args: (_ for _ in ()).throw(
+            main.HTTPException(status_code=504, detail="synthetic deadline")
+        ),
+    )
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", b"Experian synthetic report", "text/plain")},
+    )
+    assert response.status_code == 504
+    assert tracker.acquired == 1
+    assert tracker.released == 1
+    assert remaining_jobs() == []
+
+
+def test_post_upload_deadline_rolls_back_returned_remote_paths(client, monkeypatch):
+    uploaded_paths = [
+        "synthetic-user/synthetic-case/synthetic-scan/source_1.txt",
+        "synthetic-user/synthetic-case/synthetic-scan/scan_result_summary.json",
+    ]
+    remote_rollbacks = []
+    database_rollbacks = []
+    deadline_checks = 0
+
+    def fail_after_uploads(_deadline):
+        nonlocal deadline_checks
+        deadline_checks += 1
+        if deadline_checks == 4:
+            raise main.HTTPException(status_code=504, detail="synthetic post-upload deadline")
+
+    monkeypatch.setattr(main, "enforce_scan_deadline", fail_after_uploads)
+    monkeypatch.setattr(main, "persist_scan_artifacts", lambda *_args: uploaded_paths)
+    monkeypatch.setattr(main, "rollback_uploaded_artifacts", lambda paths: remote_rollbacks.append(list(paths)))
+    monkeypatch.setattr(main, "rollback_scan_record", lambda persistence, _principal: database_rollbacks.append(persistence))
+
+    response = client.post(
+        "/api/scanner/parse",
+        files={"files": ("synthetic.txt", b"Experian synthetic report", "text/plain")},
+    )
+    assert response.status_code == 504
+    assert remote_rollbacks == [uploaded_paths]
+    assert len(database_rollbacks) == 1
+    assert remaining_jobs() == []

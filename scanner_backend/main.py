@@ -769,13 +769,40 @@ def rollback_scan_record(persistence: dict | None, principal: AuthenticatedPrinc
         raise HTTPException(status_code=503, detail="Server-only scan record rollback failed.")
 
 
+def rollback_uploaded_artifacts(uploaded_paths: List[str]) -> None:
+    if not uploaded_paths:
+        return
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(status_code=503, detail="Secure artifact rollback is not configured.")
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+    }
+    try:
+        response = requests.delete(
+            f"{supabase_url}/storage/v1/object/credit-report-artifacts",
+            headers=headers,
+            json={"prefixes": uploaded_paths},
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        logger.exception("Secure artifact rollback request failed")
+        raise HTTPException(status_code=503, detail="Secure artifact rollback is unavailable.") from exc
+    if response.status_code < 200 or response.status_code >= 300:
+        logger.error("Secure artifact rollback rejected with status %s", response.status_code)
+        raise HTTPException(status_code=503, detail="Secure artifact rollback failed.")
+
+
 def persist_scan_artifacts(
     authorization: str,
     principal: AuthenticatedPrincipal,
     persistence: dict,
     out_dir: Path,
     job_dir: Path,
-) -> None:
+) -> List[str]:
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     if not supabase_url or not service_key:
@@ -795,23 +822,6 @@ def persist_scan_artifacts(
     )
     rows = []
     uploaded_paths = []
-
-    def rollback_uploads():
-        if not uploaded_paths:
-            return
-        try:
-            response = requests.delete(
-                f"{supabase_url}/storage/v1/object/credit-report-artifacts",
-                headers={**headers, "Content-Type": "application/json"},
-                json={"prefixes": uploaded_paths},
-                timeout=10,
-            )
-            if response.status_code < 200 or response.status_code >= 300:
-                logger.error("Secure artifact rollback rejected with status %s", response.status_code)
-                raise HTTPException(status_code=503, detail="Secure artifact rollback failed.")
-        except requests.RequestException:
-            logger.exception("Secure artifact rollback request failed")
-            raise HTTPException(status_code=503, detail="Secure artifact rollback is unavailable.")
 
     try:
         for kind, path, stored_filename in artifact_files:
@@ -842,12 +852,13 @@ def persist_scan_artifacts(
         _supabase_service_request("POST", "scan_artifacts", json_body=rows)
     except (requests.RequestException, HTTPException) as exc:
         try:
-            rollback_uploads()
+            rollback_uploaded_artifacts(uploaded_paths)
         except HTTPException as rollback_exc:
             raise rollback_exc from exc
         if isinstance(exc, HTTPException):
             raise
         raise HTTPException(status_code=503, detail="Secure artifact storage is unavailable.") from exc
+    return uploaded_paths
 
 
 def read_secure_scan_artifact(authorization: str, job_id: str, artifact_kind: str) -> bytes | None:
@@ -1098,6 +1109,28 @@ def build_scanner_outputs_with_hard_deadline(
             process.join(2)
 
 
+async def cleanup_failed_scan_request(
+    principal: AuthenticatedPrincipal,
+    persistence: dict | None,
+    uploaded_paths: List[str],
+    out_dir: Path,
+) -> None:
+    """Attempt every cleanup lane and only then surface the first cleanup failure."""
+    cleanup_errors: List[HTTPException] = []
+    try:
+        await run_in_threadpool(rollback_uploaded_artifacts, uploaded_paths)
+    except HTTPException as exc:
+        cleanup_errors.append(exc)
+    try:
+        await run_in_threadpool(rollback_scan_record, persistence, principal)
+    except HTTPException as exc:
+        cleanup_errors.append(exc)
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+    if cleanup_errors:
+        raise cleanup_errors[0]
+
+
 @app.post("/scanner/parse")
 @app.post("/api/scanner/parse")
 async def parse_uploaded_reports(
@@ -1133,6 +1166,7 @@ async def parse_uploaded_reports(
     capacity_acquired = False
     deadline = time.monotonic() + SCAN_REQUEST_DEADLINE_SECONDS
     persistence = None
+    uploaded_artifact_paths: List[str] = []
 
     try:
         await acquire_scan_capacity(principal)
@@ -1219,19 +1253,29 @@ async def parse_uploaded_reports(
 
         (out_dir / "scan_result_summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
         enforce_scan_deadline(deadline)
-        await run_in_threadpool(persist_scan_artifacts, authorization, principal, persistence, out_dir, job_dir)
+        uploaded_artifact_paths = await run_in_threadpool(
+            persist_scan_artifacts, authorization, principal, persistence, out_dir, job_dir
+        )
         enforce_scan_deadline(deadline)
         if not RETAIN_OUTPUTS:
             shutil.rmtree(out_dir, ignore_errors=True)
         return JSONResponse(result)
-    except HTTPException:
-        rollback_scan_record(persistence, principal)
-        shutil.rmtree(out_dir, ignore_errors=True)
+    except HTTPException as exc:
+        try:
+            await cleanup_failed_scan_request(
+                principal, persistence, uploaded_artifact_paths, out_dir
+            )
+        except HTTPException as rollback_exc:
+            raise rollback_exc from exc
         raise
     except Exception as exc:
         logger.exception("Scanner request failed before a safe response could be produced")
-        rollback_scan_record(persistence, principal)
-        shutil.rmtree(out_dir, ignore_errors=True)
+        try:
+            await cleanup_failed_scan_request(
+                principal, persistence, uploaded_artifact_paths, out_dir
+            )
+        except HTTPException as rollback_exc:
+            raise rollback_exc from exc
         raise HTTPException(status_code=500, detail="The report could not be processed safely.") from exc
     finally:
         if not RETAIN_UPLOADS:
