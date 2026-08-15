@@ -30,6 +30,20 @@ def test_hosted_scanner_uploads_fail_closed_without_explicit_enable(monkeypatch)
     assert response.json()["detail"]["code"] == "scanner_uploads_disabled"
 
 
+def test_hosted_suspension_runs_before_request_body_validation(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("SCANNER_ACCEPT_UPLOADS", raising=False)
+
+    response = client.post(
+        "/api/scanner/parse",
+        content=b"SYNTHETIC BODY MUST NOT REACH MULTIPART VALIDATION",
+        headers={"content-type": "application/octet-stream"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "scanner_uploads_disabled"
+
+
 def test_explicit_enable_is_required_for_hosted_staging(monkeypatch):
     monkeypatch.setenv("RENDER", "true")
     monkeypatch.setenv("SCANNER_ENVIRONMENT", "staging")
