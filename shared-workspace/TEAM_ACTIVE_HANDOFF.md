@@ -283,3 +283,11 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - Preview-only correction: replace the root rewrite with a temporary Vercel redirect from `/` to `/customer-flow-preview.html`. The SPA catch-all remains in place for `/login` and protected application routes.
 - This correction is limited to the non-production preview branch. `creditvivo.com`, production aliases, pricing, providers, scanner behavior, and real-customer-data controls remain unchanged.
 - Acceptance evidence required before sharing: hosted `/` lands on the approved preview, pricing remains under review/no charges, Evidence Vault remains synthetic-only with real ID upload disabled, `/login` renders, and anonymous `/dashboard` still redirects to `/login`.
+
+### ChatGPT-design preview hosted verification - 2026-08-15
+
+- Independent verdict at `068d71df5694ea573b064824ca91ae885822ca8a`: PASS with no P0/P1. The verifier confirmed the non-permanent root redirect, absence of the stale root rewrite and `dashboard.html`, protected dashboard routing, deferred pricing copy, synthetic-only Evidence Vault, disabled ID upload/no file input, and passing typecheck, scoped lint, build, diff, and cleanliness checks.
+- Vercel preview deployment `dpl_8TwKVo3CamFxXUqVWFjouQndzNoX` reached READY for exact commit `068d71df5694ea573b064824ca91ae885822ca8a`; target is preview, not production.
+- Hosted browser PASS: `/` redirected to `/customer-flow-preview.html` and rendered the approved `CreditVivo Customer Flow Preview`; the Evidence Vault was present; pricing read `Under review` and `No charges occur in this preview`; the ID-upload button was disabled; and the page contained no file input.
+- Hosted route PASS: `/login` rendered the customer test-access screen; an anonymous request to `/dashboard` changed to `/login` and rendered the same access screen.
+- Final preview status: PASS FOR SYNTHETIC CUSTOMER-FLOW TESTING. Real report/identity uploads, authenticated multi-user staging, payments, production promotion, and `creditvivo.com` changes remain outside this preview and are not approved by this result.
