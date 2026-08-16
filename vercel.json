@@ -3,6 +3,13 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/customer-flow-preview.html",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/customer-flow-preview.html",
@@ -23,10 +30,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/customer-flow-preview.html"
-    },
     {
       "source": "/api/sky-bell",
       "destination": "/api/sky-bell"

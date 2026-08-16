@@ -276,3 +276,10 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - Known limits: real identity/report uploads remain disabled; isolated Supabase/storage staging remains blocked by the separately recorded cost/access decision; no authenticated multi-user flow or real scanner execution is claimed by this visual preview.
 - Rollback: remove the three preview assets and root rewrite, restore the legacy Vite input only if the obsolete unprotected static dashboard is deliberately needed under a non-colliding path. Do not restore it at `/dashboard`.
 - Status: Ready for independent preview verification. Vercel preview deployment is held until the verifier checks the committed branch.
+
+### ChatGPT-design preview hosted-route correction - 2026-08-15
+
+- The first Vercel preview smoke test found that `/` still served the physical React `index.html`, despite the configured root rewrite; the approved static preview itself rendered correctly at `/customer-flow-preview.html`.
+- Preview-only correction: replace the root rewrite with a temporary Vercel redirect from `/` to `/customer-flow-preview.html`. The SPA catch-all remains in place for `/login` and protected application routes.
+- This correction is limited to the non-production preview branch. `creditvivo.com`, production aliases, pricing, providers, scanner behavior, and real-customer-data controls remain unchanged.
+- Acceptance evidence required before sharing: hosted `/` lands on the approved preview, pricing remains under review/no charges, Evidence Vault remains synthetic-only with real ID upload disabled, `/login` renders, and anonymous `/dashboard` still redirects to `/login`.
