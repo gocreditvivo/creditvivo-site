@@ -27,3 +27,4 @@
 @media (max-width:900px){.evidence-grid{grid-template-columns:1fr}.evidence-states{align-items:stretch;flex-direction:column}.evidence-states i{transform:rotate(90deg);text-align:center}}
 @media (max-width:760px){.evidence-vault{padding:75px 20px}.evidence-vault h2{font-size:39px}.evidence-card{padding:24px 20px}}
 .price-note{background:#f3f6ff;border-radius:8px;color:var(--blue);font-size:13px;font-weight:700;margin:-12px 0 24px;padding:10px;text-align:center}
+.price strong:only-child{font-size:36px}
