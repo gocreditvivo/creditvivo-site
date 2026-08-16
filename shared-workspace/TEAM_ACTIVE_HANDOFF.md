@@ -253,3 +253,26 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - Read-only discovery found one healthy CreditVivo Supabase project, `gykmlrctdzyzoobsmfqw`, in the `gocreditvivo` organization. It is treated as production and was not queried, migrated, reconfigured, or used for synthetic testing.
 - The CreditVivo project currently has zero development branches. Supabase quoted a new isolated branch at `$0.01344` per hour.
 - Spending remains outside the existing approval. Branch creation, cost confirmation, migration application, and staging tests are stopped pending Tim's explicit approval of that hourly charge. The smallest founder decision is: approve or decline a temporary Supabase staging branch at `$0.01344/hour`, with deletion only after a separate explicit cleanup approval.
+
+### ChatGPT-design customer-flow preview task start - 2026-08-15
+
+- Status: In progress. Founder identified `https://creditvivo-preview.gotimdo.chatgpt.site/` as the authoritative visual direction and requested a test environment connected to the CreditVivo customer flow.
+- Owner: Codex by direct founder assignment for this isolated integration. Branch: `codex/chatgpt-home-customer-flow-preview` from the independently code-approved Technical RC checkpoint. No concurrent Claude file ownership is assumed.
+- Scope: preserve the authoritative public-page layout in a no-index Vercel preview; replace the prototype's dead `#top` sign-in and `mailto:` primary conversion paths with the existing `/login` route; retain protected `/dashboard`, `/scan`, and `/findings` routing; do not change scanner/backend, Supabase, RLS, domains, pricing configuration, or production deployment.
+- Expected files: `public/customer-flow-preview.html`, `public/chatgpt-preview.css`, `public/customer-flow-preview.js`, `vercel.json`, and this handoff only.
+- Acceptance criteria: preview root matches the identified visual direction; primary CTAs reach `/login`; protected routes still fail closed for anonymous users; build, typecheck, lint, and link checks pass; synthetic accounts/data only; `creditvivo.com` remains unchanged pending separate production approval.
+- Founder scope addition: add an Evidence Vault section for government-ID verification and proof-of-error documents. Preview uploads remain disabled and synthetic-only; the section must show distinct upload, security-scan, extract, review, and confirm states and must not claim real identity-document readiness before isolated staging storage/security tests pass.
+- Founder pricing input: each bureau report costs $5, so a three-bureau report set costs $15. Test pricing is shown as $79/month plus $15 when a three-bureau report set is ordered; this remains preview-only and is not a production pricing change.
+- Verification found a route collision: `dashboard.html` was configured as a second Vite entry and caused `/dashboard` to serve an unprotected legacy static scanner screen in local preview. The legacy entry is removed from the build so `/dashboard` resolves through the protected React router.
+
+### ChatGPT-design customer-flow preview pre-deployment checkpoint - 2026-08-15
+
+- Environment: local preview only; synthetic data only; no production domain, provider configuration, scanner backend, Supabase policy, or real document changed.
+- Visual result: authoritative ChatGPT direction reproduced at the preview root, with responsive navigation, interactive bureau tabs, customer-flow explanation, Evidence Vault, attorney-support positioning, and transparent pricing.
+- Evidence Vault: government-ID verification and proof-of-error cards are present; real upload control is disabled; copy explicitly requires synthetic documents until private-storage staging passes; processing states are Upload -> Security scan -> Extract -> Review -> Confirm.
+- Pricing shown for test review: $79/month plus $15 when a three-bureau report set is ordered. Primary service bullets include customized bureau/furnisher letters and customer approval before sending. This is not deployed production pricing.
+- Route safety repair: removed `dashboard.html` from Vite's build inputs. Built output contains no `dist/dashboard.html`; a fresh anonymous local request to `/dashboard` redirects to `/login` and renders the customer test-access screen.
+- Tests: TypeScript typecheck PASS; scoped ESLint PASS for `src`, `api`, `vite.config.ts`, and the new preview script; Vite production build PASS with 1,592 modules and only the existing chunk-size warning; legacy dashboard absence assertion PASS; local CTA `/login` handoff PASS; Evidence Vault disabled-upload assertion PASS.
+- Known limits: real identity/report uploads remain disabled; isolated Supabase/storage staging remains blocked by the separately recorded cost/access decision; no authenticated multi-user flow or real scanner execution is claimed by this visual preview.
+- Rollback: remove the three preview assets and root rewrite, restore the legacy Vite input only if the obsolete unprotected static dashboard is deliberately needed under a non-colliding path. Do not restore it at `/dashboard`.
+- Status: Ready for independent preview verification. Vercel preview deployment is held until the verifier checks the committed branch.

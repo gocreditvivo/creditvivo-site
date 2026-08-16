@@ -5,6 +5,12 @@
   "framework": "vite",
   "headers": [
     {
+      "source": "/customer-flow-preview.html",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.onrender.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" },
@@ -17,6 +23,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/customer-flow-preview.html"
+    },
     {
       "source": "/api/sky-bell",
       "destination": "/api/sky-bell"
