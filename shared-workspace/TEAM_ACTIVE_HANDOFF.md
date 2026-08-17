@@ -125,3 +125,15 @@ Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; W
 - Required safe behavior: expose no more than the minimum approved identifier, normally masked except last four where operationally necessary.
 - Immediate controls: do not distribute the affected workbook, do not use affected draft letters, and do not treat the finding as resolved until Codex fixes and tests all generated outputs.
 - Codex deliverable: confirmed/false-positive determination, severity, root cause, files/lines, regression tests, corrected outputs, and pass/fail result.
+
+### Frontend WOW readiness command — 2026-07-26
+- Founder direction: use Dovly as the primary observable frontend and customer-experience benchmark, then create an original Credit Vivo experience with a stronger genuine WOW factor.
+- Official command: `shared-workspace/FRONTEND_WOW_BUILD_READINESS_2026-07-26.md`.
+- Coordination branch: `coordination/frontend-wow-readiness-2026-07-26`.
+- Current status: **PARTIALLY LINKED — ACKNOWLEDGEMENTS PENDING**.
+- Verified: repository access, GitHub-to-Vercel connection, Vercel branch previews, root Vite + React + TypeScript stack, and separate Claude/Codex lanes.
+- Not yet verified: Claude acknowledgement for the new command, Codex acknowledgement for the new command, current shared API/type/status contract, and Claude direct GitHub access.
+- Expected Claude lane: `claude/frontend-wow-v1` or a clearly versioned offline package using synthetic data only.
+- Expected Codex lane: `codex/frontend-wow-integration-v1` for interface contracts, integration, security, tests, and preview verification.
+- Required acknowledgement format: `READY: [agent] | branch/package | owned files | dependencies | blockers | first checkpoint`.
+- No production deployment is authorized by this readiness command.
