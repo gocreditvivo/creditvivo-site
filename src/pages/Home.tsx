@@ -93,7 +93,7 @@ export default function Home() {
               </div>
 
               <h1 className="mb-4 text-[34px] font-bold leading-tight text-navy-900 sm:text-[40px]">
-                AI Credit Review + Attorney Escalation
+                AI Credit Review + Attorney-Ready Prep
               </h1>
 
               <p className="text-base text-navy-500 leading-relaxed mb-6 max-w-xl">
@@ -118,6 +118,10 @@ export default function Home() {
                   </span>
                 ))}
               </div>
+              <p className="mt-4 text-[11px] leading-relaxed text-navy-400 max-w-xl">
+                Credit Vivo is educational software, not a credit repair organization or
+                law firm. No guaranteed score increases — results are not guaranteed.
+              </p>
               <div className="mt-6 rounded-xl border border-emerald-100 bg-white/85 p-4 shadow-sm shadow-emerald-900/5 lg:hidden">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
                   What happens next
@@ -204,6 +208,12 @@ export default function Home() {
               </div>
             ))}
           </div>
+          <p className="mt-6 text-center text-[11px] leading-relaxed text-navy-400 max-w-2xl mx-auto">
+            You always have the right to dispute inaccurate or incomplete credit report
+            information yourself, for free, directly with the credit bureaus and
+            furnishers. Credit Vivo's tools are here to help you organize that process —
+            not to replace a right you already have.
+          </p>
         </div>
       </section>
 
@@ -233,8 +243,8 @@ export default function Home() {
               },
               {
                 icon: Scale,
-                title: 'Attorney support',
-                desc: 'When the issue is more serious, Credit Vivo can help prepare your file for attorney review.',
+                title: 'Attorney-ready prep',
+                desc: 'When the issue is more serious, Credit Vivo can help organize your file for optional attorney review — attorney access itself is a separate, optional relationship, not legal representation by Credit Vivo.',
                 color: 'bg-amber-100 text-amber-700',
               },
             ].map(({ icon: Icon, title, desc, color }) => (
@@ -300,6 +310,10 @@ export default function Home() {
             Join Free
             <ArrowRight size={15} />
           </a>
+          <p className="mt-5 text-[11px] leading-relaxed text-navy-400 max-w-md mx-auto">
+            Results are not guaranteed and vary by consumer. Credit Vivo is educational
+            software, not a credit repair organization or law firm.
+          </p>
         </div>
       </section>
     </>
