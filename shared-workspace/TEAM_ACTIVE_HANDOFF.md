@@ -2,126 +2,68 @@
 
 This is the shared operating handoff for Tim Do, ChatGPT, Claude, and Codex through launch.
 
-## Standing rules
-Everyone must act in Credit Vivo's lawful long-term best interests; be factual, honest, and supportive; distinguish facts, assumptions, risks, and unknowns; protect company and customer data; disclose blockers, failed tests, mistakes, and security concerns; preserve evidence and change history; and avoid overlapping edits unless ownership is agreed.
+## Standing authority
+Read and follow, in order:
+1. `AGENTS.md`
+2. `shared-workspace/TEAM_HANDOFF_PROTOCOL.md`
+3. `shared-workspace/LAUNCH_RECOVERY_SPRINT_2026-07-29.md`
+4. This file and the latest relevant PR evidence
 
-## Roles
+## Current truth — July 29, 2026
 
-### Tim Do — Founder and final authority
-Owns final product, business, visual, pricing, vendor, legal, tax, ownership, and production decisions.
-
-### ChatGPT — Product, customer-flow, operations, and coordination lead
-Owns customer-flow requirements, wording direction, acceptance criteria, approval gates, coordination, founder summaries, and maintenance of this handoff.
-
-### Claude — Frontend, UX, and customer-flow implementation engineer
-Owns onboarding, customer dashboard, founder/manager dashboard, content, visual system, responsive design, accessibility, frontend tests, approved integrations, and preview deployment.
-
-Claude must use a dedicated branch and synthetic data only. Claude may not change Metro 2 rules, scanner parsing, production migrations, RLS, auth policy, service-role configuration, production environment variables, or production deployment/domain settings without written reassignment.
-
-### Codex — Backend, scanner, security, and independent verification engineer
-Owns scanner/parser, rules engine, backend APIs, data model, security controls, audit logs, Supabase architecture, technical verification, independent test reruns, and production-readiness findings.
+- Overall release status: **Blocked pending current evidence**.
+- The previous July 19 handoff was stale and did not prove current implementation, test, integration, or deployment status.
+- The latest repository planning commit created a same-day launch plan, but a plan is not completion evidence.
+- The account-number masking finding remains a P0 hard stop until Codex independently reproduces, fixes, regression-tests, and scans all synthetic outputs for leakage.
+- No production approval is recorded.
+- No agent may represent Credit Vivo as production-ready from old status notes, mock screens, or unverified test claims.
 
 ## Current objective
-Build and verify this customer journey:
+Complete and verify the integrated synthetic-data journey:
 
-Invite → Sign up → Account setup → Disclosures → Agreement status → Credit report connection → Import status → Scanner status → Possible issues → Customer review/approval → Admin review → Dispute preparation → Tracking → Bureau response → Next action
+Invite → Sign up → Account setup → Disclosures → Agreement status → Credit report connection/upload → Import status → Scanner status → Possible issues → Customer review/approval → Admin review → Draft dispute preparation → Mail/tracking → Bureau response → Next action
 
-## Current assignments
+## Active ownership
 
-### Claude
-Build the complete frontend customer journey, customer dashboard, founder dashboard, mobile layouts, error/blocked/success states, accessibility, tests, and preview deployment.
+### Codex — backend/scanner/security critical path
+- Required branch: `codex/launch-recovery-backend-2026-07-29`
+- Execute Lane A in `LAUNCH_RECOVERY_SPRINT_2026-07-29.md`.
+- First checkpoint: current commit, architecture inventory, baseline commands, exact test counts, blockers, and masking-defect determination.
+- Must publish a versioned API/status/role contract before Claude connects live data.
 
-### Codex
-Verify route/state integrity, role separation, customer data isolation, secrets, API/type contracts, Supabase/RLS assumptions, audit events, bypass risks, test coverage, synthetic-data-only preview, and no unauthorized production changes.
+### Claude — frontend/UX/customer journey
+- Required branch: `claude/launch-recovery-frontend-2026-07-29`
+- Execute Lane B in `LAUNCH_RECOVERY_SPRINT_2026-07-29.md`.
+- First checkpoint: current commit, route/component map, build/tests, mock-vs-live inventory, preview status, and dependencies.
+- Must not modify scanner rules, backend security, RLS, secrets, production migrations, or production deployment settings.
 
-### ChatGPT
-Maintain requirements, review Claude architecture/visuals, review Codex findings, resolve conflicts, keep Tim informed, and update this handoff.
+### ChatGPT — product owner and release-gate reviewer
+- Maintains requirements and handoff truth.
+- Reviews both PRs, resolves interface conflicts, and reports verified completion, blockers, risk, cost/access needs, and founder decisions.
 
-### Tim
-Approve major product/visual decisions, provide Credit Repair Cloud screenshots/exports, arrange legal review, and withhold production approval until testing and verification are complete.
+### Tim Do — founder and final release authority
+- Approves material visual/business decisions and any production release.
+- Production approval is invalid without staging evidence, rollback, monitoring, privacy/security gates, legal/compliance review, and named remaining limitations.
 
-## Accelerated execution target
-This is an AI-assisted build. Move fast without weakening controls.
+## Immediate checkpoints required from both builders
 
-### Claude target
-- Start immediately after reading this handoff.
-- Post branch name, owned files/modules, approach, dependencies, risks, and first checkpoint before coding deeply.
-- Deliver the first working frontend flow within 2–6 hours where technically feasible.
-- Deliver the complete mock-data customer flow, mobile layouts, key failure states, and core tests within 6–12 hours where technically feasible.
-- Deliver preview deployment, screenshots, test results, known limitations, and Codex verification package within 12–24 hours where technically feasible.
-- Report any blocker immediately. Do not wait for a scheduled update.
-
-### Codex target
-- Begin review at Claude's architecture checkpoint rather than waiting until completion.
-- Verify route/state integrity, role boundaries, data isolation, secrets, API assumptions, Supabase/RLS implications, test coverage, and preview safety.
-- Return confirmed defects with severity, file/line references, missing tests, and pass/conditional pass/fail.
-- Complete the first verification pass within 6–12 hours after Claude's review package is available where technically feasible.
-- Re-test fixes promptly and document remaining launch blockers.
-
-### ChatGPT target
-- Review handoff updates on demand and through the active hourly watcher.
-- Resolve requirement conflicts quickly.
-- Keep Tim informed of actual progress, blockers, risks, and verified completion evidence.
-
-### Founder expectation
-The target is same-day first build and next-day verification, not a guarantee. Actual completion depends on repo health, API readiness, auth/Supabase issues, and test failures. Speed does not override security, customer-data protection, or production approval gates.
-
-## Required handoff checkpoints
-
-### Task start
-Post task, branch, owned files/modules, approach, dependencies, risks, and expected checkpoint.
-
-### Architecture checkpoint
-Post route map, component/module structure, state model, role model, API assumptions, sensitive actions, and test plan.
-
-### Interface-ready checkpoint
-Post API contracts, types, events, status values, integration assumptions, and unresolved dependencies.
-
-### Pull-request checkpoint
-Reviewer returns confirmed defects, severity, file/line references, missing tests, security/data-isolation findings, integration mismatches, and pass/conditional pass/fail.
-
-### Pre-deployment checkpoint
-Provide passing tests, no exposed secrets, synthetic data only, no unauthorized production changes, rollback path, known limitations, and Tim approval status.
-
-### Completion checkpoint
-Post branch/commit, files changed, screenshots or preview URL, tests/results, accessibility findings, security/compliance impact, limitations, blockers, and next task.
-
-## Timing
-- Small task: completion handoff.
-- Medium task: start + completion.
-- Large task: start + architecture + interface-ready + PR + completion.
-- Critical/security task: immediate alert + milestone reviews + pre/post-deployment checks.
-- Work over one day: daily progress update.
-- Any blocker affecting another person: immediate update.
-- Any shared API/type/status change: update before merge.
-
-## Status values
-Not started; In progress; Waiting on Tim; Waiting on Claude; Waiting on Codex; Waiting on ChatGPT; Blocked; Needs review; Ready for preview; Ready for verification; Conditionally approved; Approved; Rejected; Completed.
+1. **Task start:** branch, commit, owned files/modules, approach, dependencies, risks.
+2. **Baseline truth:** exact build/test commands and pass/fail/skip results.
+3. **Architecture/interface:** routes, states, roles, API/types, sensitive actions, privacy rules.
+4. **First integrated synthetic run:** input, output, failures, screenshots/log references.
+5. **PR verification:** files, migrations/policies, tests, security/accessibility impact, rollback, limitations.
+6. **Release gate:** Blocked, Preview only, Controlled private beta, or Production approved—with evidence.
 
 ## Non-negotiable safeguards
-- No automatic dispute sending at launch.
-- No scanner output presented as a final legal conclusion.
-- No real customer data in development or preview.
-- No production secrets in client code.
-- No production deployment without Tim's approval.
-- No hiding failures or weakening controls for speed.
+- Synthetic data only outside approved production workflows.
+- No automatic dispute sending.
+- Scanner findings are possible report issues, not legal conclusions.
+- No real customer data or secrets in commits, fixtures, screenshots, browser logs, analytics, or preview.
+- Customer/admin authorization and case isolation must be server-enforced.
+- No production deployment or customer-data intake without Tim's explicit approval.
+- No unsupported percentages or claims of completion.
 
-## Active status updates
-
-### Claude task-start checkpoint — 2026-07-19
-- Status: In progress.
-- Delivery mode: `offline-package/claude-frontend-journey-v1` because Claude has no authenticated GitHub or working local file access.
-- Target integration branch for Codex/Tim to create: `claude/frontend-customer-journey`.
-- Stack decision from ChatGPT after repository inspection: build for the root Vite + React + TypeScript application. Root `package.json` uses Vite, React 18, React Router, TypeScript, Tailwind, and Supabase.
-- Owned modules: `src/journey/`, `src/dashboard/customer/`, `src/dashboard/founder/`, `src/components/`, `src/state/journeyMachine.*`, `src/mocks/`, and `tests/frontend/`.
-- Architecture approach: one explicit typed journey state machine; mock data through a replaceable typed service layer; loading/success/error/blocked rendering for every state; customer/founder role gates at route boundaries; mobile-first WCAG AA.
-- Dependencies: Codex API contracts for import/scanner/dispute status; Tim's Credit Repair Cloud screenshots/exports; Codex or Tim must land the package and create the preview deployment.
-- Next checkpoint: Claude architecture checkpoint with route map, component structure, state model, role model, API assumptions, sensitive actions, and test plan.
-
-### Critical Codex verification task — B-3 account-number masking
-- Reported by Claude from `credit-vivo-desktop-scanner-output__55_.xlsx`.
-- Alleged behavior: account numbers appear masked backwards, exposing leading digits and hiding only the last four; Claude reports 299 affected cells, including 274 in hidden Draft Letters.
-- Status: Unverified critical finding. Codex must independently reproduce and confirm counts, source logic, affected outputs, and whether any real or synthetic data is involved.
-- Required safe behavior: expose no more than the minimum approved identifier, normally masked except last four where operationally necessary.
-- Immediate controls: do not distribute the affected workbook, do not use affected draft letters, and do not treat the finding as resolved until Codex fixes and tests all generated outputs.
-- Codex deliverable: confirmed/false-positive determination, severity, root cause, files/lines, regression tests, corrected outputs, and pass/fail result.
+## Current coordination branch
+- ChatGPT branch: `chatgpt/launch-command-reset-2026-07-29`
+- Coordination artifact: `shared-workspace/LAUNCH_RECOVERY_SPRINT_2026-07-29.md`
+- Next action: Codex and Claude create separate branches, post start checkpoints, execute their assigned lanes, and open separate evidence-backed PRs.
